@@ -1,0 +1,161 @@
+rules_version = '2';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Telkomsat Inventaris Sparepart — Strict Firestore Security Rules
+// ─────────────────────────────────────────────────────────────────────────────
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Auth helpers ─────────────────────────────────────────────────────────
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function rawRole() {
+      return isSignedIn() && userDoc().data.status == 'aktif' ? userDoc().data.role : null;
+    }
+
+    function userRole() {
+      let r = rawRole();
+      return r in ['direktur', 'manager', 'admin_keuangan'] ? 'supervisor' : r;
+    }
+
+    function isSystemAdmin() {
+      return userRole() == 'admin';
+    }
+
+    function isAdminGudang() {
+      return userRole() == 'admin_gudang';
+    }
+
+    function isTeknisi() {
+      return userRole() == 'teknisi';
+    }
+
+    function isSupervisor() {
+      return userRole() == 'supervisor';
+    }
+
+    // ── Document Validation Helpers ──────────────────────────────────────────
+
+    function validTransaksiCreate() {
+      let d = request.resource.data;
+      let jenis = d.jenisTransaksi;
+      let hasSpt = ('nomorSpt' in d) && d.nomorSpt is string && d.nomorSpt.size() > 0;
+
+      return d.keys().hasAll([
+          'idSparepart', 'jenisTransaksi', 'statusTransaksi',
+          'requestedByUid', 'jumlah', 'statusBarang', 'createdAt'
+        ])
+        && d.idSparepart is string
+        && jenis in ['OUT', 'MOVE', 'RETURN', 'DAMAGE', 'FOUND', 'DISMANTLE']
+        && d.statusTransaksi == 'pending'
+        && d.requestedByUid == request.auth.uid
+        && d.jumlah is int
+        && d.jumlah > 0
+        // Enforcement: nomorSpt is required for OUT and MOVE transactions
+        && ((jenis != 'OUT' && jenis != 'MOVE') || hasSpt);
+    }
+
+    function validTransaksiUpdate() {
+      let oldData = resource.data;
+      let newData = request.resource.data;
+
+      // Only allow transition from pending to completed or rejected by Admin Gudang
+      return isAdminGudang()
+        && oldData.statusTransaksi == 'pending'
+        && (newData.statusTransaksi == 'completed' || newData.statusTransaksi == 'rejected')
+        && newData.requestedByUid == oldData.requestedByUid;
+    }
+
+    function validAktivitasCreate() {
+      let d = request.resource.data;
+      return isSignedIn() && d.actorUid == request.auth.uid;
+    }
+
+    // ── Collection Rules ─────────────────────────────────────────────────────
+
+    // 1. Users Collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSystemAdmin();
+      allow delete: if false;
+    }
+
+    // 2. Spareparts Catalogue
+    match /spareparts/{sparepartId} {
+      allow read: if isSignedIn();
+      allow write: if isAdminGudang();
+    }
+
+    // 3. Sparepart Physical Items
+    match /sparepart_items/{itemId} {
+      allow read: if isSignedIn();
+      allow create: if isAdminGudang();
+      // Teknisi CANNOT update or create item directly
+      allow update, delete: if isAdminGudang();
+    }
+
+    // 4. Transaksi
+    match /transaksi/{transactionId} {
+      allow read: if isSignedIn() && (
+        isAdminGudang() || isSupervisor() || isSystemAdmin() || 
+        (isTeknisi() && resource.data.requestedByUid == request.auth.uid)
+      );
+      allow create: if isSignedIn() && (
+        isAdminGudang() || 
+        (isTeknisi() && validTransaksiCreate())
+      );
+      // Admin Gudang updates pending transaction to completed/rejected
+      allow update: if isSignedIn() && validTransaksiUpdate();
+      allow delete: if false;
+    }
+
+    // 5. Item Locks (Reservation to prevent concurrent pending requests)
+    match /item_locks/{itemId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.requestedByUid == request.auth.uid;
+      allow update, delete: if isAdminGudang() || (isSignedIn() && resource.data.requestedByUid == request.auth.uid);
+    }
+
+    // 6. Session Keranjang
+    match /session_keranjang/{sessionId} {
+      allow read, create, update: if isSignedIn();
+      allow delete: if false;
+    }
+
+    match /session_keranjang_item/{itemId} {
+      allow read, create, update, delete: if isSignedIn();
+    }
+
+    // 7. Master Lokasi
+    match /lokasi/{locationId} {
+      allow read: if isSignedIn();
+      allow write: if isAdminGudang();
+    }
+
+    // 8. Audit Log Aktivitas
+    match /aktivitas/{activityId} {
+      allow read: if isSignedIn() && (isSystemAdmin() || isSupervisor() || isAdminGudang());
+      allow create: if validAktivitasCreate();
+      allow update, delete: if false;
+    }
+
+    // 9. Notifications
+    match /notifications/{notificationId} {
+      allow read, create, update: if isSignedIn();
+      allow delete: if false;
+    }
+
+    // 10. Legacy / Guest collections
+    match /teknisi_guest/{guestId} {
+      allow read, write: if false;
+    }
+  }
+}

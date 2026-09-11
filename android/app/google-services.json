@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1000461731551",
+    "project_id": "telkomsat-30da7",
+    "storage_bucket": "telkomsat-30da7.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1000461731551:android:1bea803dcb8acd893f0b6a",
+        "android_client_info": {
+          "package_name": "id.co.telkomsat.inventory"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCa8x-qP6Nwd13pV8biYTOiQg13cZa1ET4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
