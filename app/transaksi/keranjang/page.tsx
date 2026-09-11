@@ -38,7 +38,7 @@ interface CartItemData {
 export default function KeranjangPage() {
   const router = useRouter();
   const { user } = useAuthStore();
-  const { items, namaTeknisi, removeItem, clearCart, initSession } =
+  const { items, namaTeknisi, updateItem, removeItem, clearCart, initSession } =
     useCartStore();
 
   const [cartItems, setCartItems] = useState<CartItemData[]>([]);
@@ -52,6 +52,13 @@ export default function KeranjangPage() {
   const hasOutOrMove = items.some(
     (item) => item.jenisAksi === "OUT" || item.jenisAksi === "MOVE"
   );
+
+  useEffect(() => {
+    const hasIncomingOnly = items.length > 0 && items.every((i) => i.jenisAksi === "DISMANTLE" || i.jenisAksi === "FOUND");
+    if (hasIncomingOnly && !destination) {
+      setDestination("Gudang Regional 6");
+    }
+  }, [items, destination]);
 
   useEffect(() => {
     getLokasiList()
@@ -466,6 +473,44 @@ export default function KeranjangPage() {
                                 </p>
                               </div>
                             )}
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              <span className="text-xs text-green-900 font-semibold">Kondisi Barang:</span>
+                              <div className="inline-flex rounded-lg border border-green-300 p-0.5 bg-white text-xs shadow-xs">
+                                <button
+                                  type="button"
+                                  onClick={() => updateItem(item.cartItemId, { kondisiBarang: "Bagus" })}
+                                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                                    (foundItem?.kondisiBarang || "Bagus") === "Bagus"
+                                      ? "bg-green-600 text-white"
+                                      : "text-gray-600 hover:text-black"
+                                  }`}
+                                >
+                                  🟢 Bagus (Tersedia)
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => updateItem(item.cartItemId, { kondisiBarang: "Rusak" })}
+                                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                                    foundItem?.kondisiBarang === "Rusak"
+                                      ? "bg-red-600 text-white"
+                                      : "text-gray-600 hover:text-black"
+                                  }`}
+                                >
+                                  🔴 Rusak
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => updateItem(item.cartItemId, { kondisiBarang: "Tidak Diketahui" })}
+                                  className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                                    foundItem?.kondisiBarang === "Tidak Diketahui"
+                                      ? "bg-amber-600 text-white"
+                                      : "text-gray-600 hover:text-black"
+                                  }`}
+                                >
+                                  🟡 Cek Fisik
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -500,6 +545,7 @@ export default function KeranjangPage() {
               <div className="space-y-3">
                 {dismantleItems.map((item, index) => {
                   const cartItem = items.find((i) => i.id === item.cartItemId);
+                  const kondisi = cartItem?.kondisiDismantle || "Bagus";
                   return (
                     <div
                       key={item.cartItemId}
@@ -514,8 +560,50 @@ export default function KeranjangPage() {
                           {item.kode && <span>Tagging: {item.kode}</span>}
                           {item.serialNumber && <span className="font-mono"> - SN: {item.serialNumber}</span>}
                         </p>
-                        <p className="text-sm text-orange-700 mt-1">
-                          Kondisi: {cartItem?.kondisiDismantle || "Tidak Diketahui"}
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          <span className="text-xs text-orange-900 font-semibold">Kondisi Dismantle:</span>
+                          <div className="inline-flex rounded-lg border border-orange-300 p-0.5 bg-white text-xs shadow-xs">
+                            <button
+                              type="button"
+                              onClick={() => updateItem(item.cartItemId, { kondisiDismantle: "Bagus" })}
+                              className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                                kondisi === "Bagus"
+                                  ? "bg-green-600 text-white"
+                                  : "text-gray-600 hover:text-black"
+                              }`}
+                            >
+                              🟢 Bagus (Tersedia)
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateItem(item.cartItemId, { kondisiDismantle: "Rusak" })}
+                              className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                                kondisi === "Rusak"
+                                  ? "bg-red-600 text-white"
+                                  : "text-gray-600 hover:text-black"
+                              }`}
+                            >
+                              🔴 Rusak
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => updateItem(item.cartItemId, { kondisiDismantle: "Tidak Diketahui" })}
+                              className={`px-2.5 py-1 rounded-md font-medium transition-all ${
+                                kondisi === "Tidak Diketahui"
+                                  ? "bg-amber-600 text-white"
+                                  : "text-gray-600 hover:text-black"
+                              }`}
+                            >
+                              🟡 Cek Fisik
+                            </button>
+                          </div>
+                        </div>
+                        <p className="text-[11px] text-orange-700 mt-1.5">
+                          {kondisi === "Bagus"
+                            ? "✓ Akan masuk ke Gudang / Base dengan status 'Tersedia' setelah disetujui."
+                            : kondisi === "Rusak"
+                            ? "⚠️ Akan berstatus 'Rusak' setelah disetujui."
+                            : "ℹ️ Akan berstatus 'Perlu Pengecekan' setelah disetujui."}
                         </p>
                       </div>
                       <button
@@ -539,7 +627,7 @@ export default function KeranjangPage() {
         >
           <h2 className="text-xl font-bold text-telkomsat-black mb-2">Detail Permintaan Approval</h2>
           <p className="text-sm text-telkomsat-gray mb-5">
-            Barang belum keluar dari gudang sampai Admin Gudang menyetujui permintaan ini.
+            Barang belum dipindahkan sampai Admin Gudang menyetujui permintaan ini.
           </p>
 
           <div className="space-y-5">
@@ -571,18 +659,28 @@ export default function KeranjangPage() {
             <div>
               <label className="block text-sm font-semibold text-telkomsat-black mb-2">
                 <MapPin className="w-4 h-4 inline mr-1 text-telkomsat-red" />
-                Lokasi Tujuan / Lokasi Kerusakan{" "}
+                Lokasi Tujuan / Base Penerima{" "}
                 <span className="text-telkomsat-red">*</span>
               </label>
-              <input
-                type="text"
-                list="lokasi-keranjang-list"
-                value={destination}
-                onChange={(e) => setDestination(e.target.value)}
-                required
-                placeholder="Pilih atau ketik lokasi (Site, Customer, Workshop, dll)"
-                className="w-full px-4 py-3 border border-telkomsat-gray-lighter rounded-xl focus:ring-2 focus:ring-telkomsat-red focus:border-telkomsat-red outline-none transition-all duration-300 bg-telkomsat-gray-lighter/30 focus:bg-white"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  list="lokasi-keranjang-list"
+                  value={destination}
+                  onChange={(e) => setDestination(e.target.value)}
+                  required
+                  placeholder="Pilih atau ketik lokasi (Gudang Regional 6, Site, Workshop, dll)"
+                  className="flex-1 px-4 py-3 border border-telkomsat-gray-lighter rounded-xl focus:ring-2 focus:ring-telkomsat-red focus:border-telkomsat-red outline-none transition-all duration-300 bg-telkomsat-gray-lighter/30 focus:bg-white"
+                />
+                <button
+                  type="button"
+                  onClick={() => setDestination("Gudang Regional 6")}
+                  className="px-3.5 py-2.5 bg-orange-100 hover:bg-orange-200 text-orange-900 rounded-xl text-xs font-bold whitespace-nowrap transition-colors"
+                  title="Pilih Gudang Regional 6 sebagai base tujuan"
+                >
+                  🏢 Base Reg 6
+                </button>
+              </div>
               <datalist id="lokasi-keranjang-list">
                 {lokasiOptions.map((nama) => (
                   <option key={nama} value={nama} />

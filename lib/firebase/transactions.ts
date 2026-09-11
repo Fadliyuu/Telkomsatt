@@ -152,14 +152,18 @@ export const createTransaction = async (
           stokTotal: Math.max(0, stokTotal - transaction.jumlah),
           updatedAt: Timestamp.now(),
         });
-      } else if (transaction.jenisTransaksi === "RETURN") {
-        // RETURN = item comes back to gudang — increase stokGudang.
+      } else if (
+        transaction.jenisTransaksi === "RETURN" ||
+        ((transaction.jenisTransaksi === "DISMANTLE" || transaction.jenisTransaksi === "FOUND") &&
+          transaction.statusBarang === "Normal" &&
+          (transaction.lokasiTujuan?.toLowerCase().includes("gudang") || !transaction.lokasiTujuan))
+      ) {
+        // RETURN / DISMANTLE (Bagus) / FOUND (Bagus) = item comes to gudang — increase stokGudang.
         tx.update(sparepartRef, {
           stokGudang: stokGudang + transaction.jumlah,
           updatedAt: Timestamp.now(),
         });
       }
-      // FOUND and DISMANTLE do not affect aggregate stock counters.
     });
 
     // Notification is best-effort — failure never rolls back the committed transaction.
@@ -428,6 +432,16 @@ export const submitCartApprovalRequest = async (
             : undefined,
         ].filter(Boolean);
 
+        const statusBarangValue = resolveStatusBarang(item);
+        const resolvedKondisiSesudah =
+          statusBarangValue === "Rusak"
+            ? "Rusak"
+            : statusBarangValue === "Perlu Pengecekan"
+            ? "Perlu Pengecekan"
+            : item.jenisAksi === "MOVE" || item.jenisAksi === "OUT"
+            ? "Digunakan"
+            : "Tersedia";
+
         // 3. Create pending transaction document
         const txPayload: Omit<Transaksi, "id"> = {
           idSparepart: item.idSparepart,
@@ -437,12 +451,12 @@ export const submitCartApprovalRequest = async (
           jenisTransaksi: item.jenisAksi,
           nomorSpt,
           lokasiAsal,
-          lokasiTujuan: item.lokasiDitemukan || lokasiTujuan,
+          lokasiTujuan: item.lokasiDitemukan || lokasiTujuan || "Gudang Regional 6",
           kondisiSebelum,
-          kondisiSesudah: kondisiSebelum,
+          kondisiSesudah: resolvedKondisiSesudah,
           statusTransaksi: "pending",
           jumlah: 1,
-          statusBarang: kondisiSebelum === "Rusak" ? "Rusak" : "Normal",
+          statusBarang: statusBarangValue,
           requestedByUid: requesterUid,
           requestedByName: requesterName,
           requestedByRole: requesterRole,
@@ -549,6 +563,14 @@ export const executeAtomicApproval = async (
       newStatus = "Rusak";
     } else if (requestedAction === "RETURN") {
       newStatus = "Tersedia";
+    } else if (requestedAction === "DISMANTLE" || requestedAction === "FOUND") {
+      if (txData.statusBarang === "Rusak") {
+        newStatus = "Rusak";
+      } else if (txData.statusBarang === "Perlu Pengecekan") {
+        newStatus = "Perlu Pengecekan";
+      } else {
+        newStatus = "Tersedia";
+      }
     }
 
     // 2. Adjust catalog stock if idSparepart exists
@@ -562,7 +584,7 @@ export const executeAtomicApproval = async (
         const stokTotal = Number(sp.stokTotal ?? 0);
 
         if (requestedAction === "OUT" || requestedAction === "MOVE") {
-          if (lokasiAsal === "Gudang" || !lokasiAsal) {
+          if (lokasiAsal.toLowerCase().includes("gudang") || !lokasiAsal) {
             tx.update(spRef, {
               stokGudang: Math.max(0, stokGudang - 1),
               updatedAt: Timestamp.now(),
@@ -574,8 +596,11 @@ export const executeAtomicApproval = async (
             stokTotal: Math.max(0, stokTotal - 1),
             updatedAt: Timestamp.now(),
           });
-        } else if (requestedAction === "RETURN") {
-          if (requestedLocation === "Gudang") {
+        } else if (
+          requestedAction === "RETURN" ||
+          ((requestedAction === "DISMANTLE" || requestedAction === "FOUND") && newStatus === "Tersedia")
+        ) {
+          if (requestedLocation.toLowerCase().includes("gudang")) {
             tx.update(spRef, {
               stokGudang: stokGudang + 1,
               updatedAt: Timestamp.now(),

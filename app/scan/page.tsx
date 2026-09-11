@@ -28,7 +28,8 @@ interface ScannedItem {
   actionType: "MOVE" | "DAMAGE" | "FOUND" | "DISMANTLE";
   cartItemId: string;
   lokasiDitemukan?: string;
-  kondisiDismantle?: "Rusak" | "Bagus";
+  kondisiDismantle?: "Rusak" | "Bagus" | "Tidak Diketahui";
+  kondisiBarang?: "Rusak" | "Bagus" | "Tidak Diketahui";
 }
 
 interface QuickAddItemData {
@@ -58,7 +59,7 @@ function getFoundItemLocation(item: SparepartItem | Sparepart): string {
 
 export default function ScanHomePage() {
   const router = useRouter();
-  const { items, addItem, removeItem, namaTeknisi, sessionToken, initSession, clearCart, clearSession } = useCartStore();
+  const { items, addItem, updateItem, removeItem, namaTeknisi, sessionToken, initSession, clearCart, clearSession } = useCartStore();
   const { user } = useAuthStore();
   const [showScanner, setShowScanner] = useState(false);
   const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
@@ -66,6 +67,11 @@ export default function ScanHomePage() {
   const [techName, setTechName] = useState("");
   const [techType, setTechType] = useState<"freelance" | "karyawan" | "vendor">("karyawan");
   const [defaultAction, setDefaultAction] = useState<"MOVE" | "DAMAGE" | "FOUND" | "DISMANTLE">("MOVE");
+  
+  // Preset kondisi & lokasi default untuk barang masuk (Dismantle & Found)
+  const [defaultIncomingCondition, setDefaultIncomingCondition] = useState<"Bagus" | "Rusak" | "Tidak Diketahui">("Bagus");
+  const [defaultIncomingLocation, setDefaultIncomingLocation] = useState<string>("Gudang Regional 6");
+  
   const [showDismantleForm, setShowDismantleForm] = useState(false);
   const [dismantleItemId, setDismantleItemId] = useState<string | null>(null);
   const [kondisiDismantle, setKondisiDismantle] = useState<"Rusak" | "Bagus">("Bagus");
@@ -169,6 +175,7 @@ export default function ScanHomePage() {
                 cartItemId: item.id,
                 lokasiDitemukan: item.lokasiDitemukan,
                 kondisiDismantle: item.kondisiDismantle,
+                kondisiBarang: item.kondisiBarang,
               } as ScannedItem;
             }
           } catch (e) {
@@ -329,56 +336,52 @@ export default function ScanHomePage() {
         }
       }
 
-      // Handle FOUND action differently
+      // Handle FOUND action: barang temuan masuk ke gudang/base
       if (defaultAction === "FOUND") {
         if (!itemData) {
-          // Barang belum ada, tampilkan modal konfirmasi
           console.log("Item not found, showing unrecognized QR modal");
           setUnrecognizedScannedId(itemId);
           setShowUnrecognizedModal(true);
           return false;
         } else {
-          // Barang sudah ada, tampilkan modal konfirmasi lokasi
-          console.log("Item found, showing location confirmation");
-          const lokasiSaatIni = getFoundItemLocation(itemData);
-          setFoundItemData({
-            id: itemId,
-            nama: itemName,
-            lokasiSaatIni,
-          });
-          setFoundLokasi(lokasiSaatIni);
-          setShowFoundConfirm(true);
-          setIsProcessing(false);
-          return false; // Don't add to cart yet, wait for confirmation
+          // Tambahkan langsung ke keranjang dengan kondisi & lokasi default tanpa modal pemblokir multi-scan
+          addItem(itemId, "FOUND", defaultIncomingLocation, undefined, defaultIncomingCondition);
+          toast.success(
+            `✓ Ditemukan: ${itemName} (${defaultIncomingCondition}) → ${defaultIncomingLocation}`,
+            { duration: 2500, icon: "✅" }
+          );
+          return true;
         }
       }
 
       if (!itemData) {
         console.log("Item not found in any collection, showing unrecognized QR modal");
-        // Tampilkan modal konfirmasi dulu sebelum Quick Add
         setUnrecognizedScannedId(itemId);
         setShowUnrecognizedModal(true);
         return false;
       }
 
-      // Handle DISMANTLE - show form first
+      // Handle DISMANTLE - barang bongkaran masuk kembali ke gudang/base
       if (defaultAction === "DISMANTLE") {
-        setDismantleItemId(itemId);
-        setShowDismantleForm(true);
-        setIsProcessing(false);
-        return false; // Don't add to cart yet, wait for condition selection
+        // Tambahkan langsung ke keranjang dengan kondisi & lokasi default tanpa modal pemblokir multi-scan
+        addItem(itemId, "DISMANTLE", defaultIncomingLocation, defaultIncomingCondition);
+        toast.success(
+          `✓ Dismantle: ${itemName} (${defaultIncomingCondition}) → ${defaultIncomingLocation}`,
+          { duration: 2500, icon: "🔧" }
+        );
+        return true;
       }
 
-      // Add to cart for MOVE, DAMAGE, or FOUND
+      // Add to cart for MOVE or DAMAGE
       console.log("Adding to cart:", itemId, defaultAction);
       addItem(itemId, defaultAction);
       
-      const actionLabel = defaultAction === "MOVE" ? "Bawa" : defaultAction === "DAMAGE" ? "Rusak" : "Ditemukan";
+      const actionLabel = defaultAction === "MOVE" ? "Bawa" : "Rusak";
       toast.success(
         `✓ Item ditambahkan! ${itemName} (${actionLabel})`,
         { 
           duration: 2500,
-          icon: defaultAction === "MOVE" ? "📦" : defaultAction === "DAMAGE" ? "⚠️" : "✅"
+          icon: defaultAction === "MOVE" ? "📦" : "⚠️"
         }
       );
 
@@ -1212,10 +1215,89 @@ export default function ScanHomePage() {
                         ✅ Ditemukan
                       </button>
                     </div>
-                    {defaultAction === "FOUND" && (
-                      <p className="text-xs text-telkomsat-gray mt-2">
-                        Konfirmasi lokasi jika barang sudah ada, atau tambahkan jika baru
-                      </p>
+                    {(defaultAction === "DISMANTLE" || defaultAction === "FOUND") && (
+                      <div className="mt-4 p-3.5 bg-orange-50/80 border border-orange-200 rounded-xl space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-orange-900">
+                            ⚙️ Pengaturan Barang Masuk (Bekas/Temuan):
+                          </span>
+                        </div>
+
+                        {/* Pilihan Kondisi Default */}
+                        <div>
+                          <label className="block text-[11px] font-semibold text-orange-950 mb-1.5">
+                            Kondisi Fisik Saat Masuk:
+                          </label>
+                          <div className="grid grid-cols-3 gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => setDefaultIncomingCondition("Bagus")}
+                              className={`py-1.5 px-2 rounded-lg text-xs font-medium border transition-all ${
+                                defaultIncomingCondition === "Bagus"
+                                  ? "bg-green-600 text-white border-green-600 shadow-sm"
+                                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                              }`}
+                            >
+                              🟢 Bagus
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDefaultIncomingCondition("Rusak")}
+                              className={`py-1.5 px-2 rounded-lg text-xs font-medium border transition-all ${
+                                defaultIncomingCondition === "Rusak"
+                                  ? "bg-red-600 text-white border-red-600 shadow-sm"
+                                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                              }`}
+                            >
+                              🔴 Rusak
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setDefaultIncomingCondition("Tidak Diketahui")}
+                              className={`py-1.5 px-2 rounded-lg text-xs font-medium border transition-all ${
+                                defaultIncomingCondition === "Tidak Diketahui"
+                                  ? "bg-amber-600 text-white border-amber-600 shadow-sm"
+                                  : "bg-white text-gray-700 border-gray-200 hover:bg-gray-50"
+                              }`}
+                            >
+                              🟡 Cek Fisik
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-orange-800 mt-1">
+                            {defaultIncomingCondition === "Bagus"
+                              ? "✓ Status akan menjadi 'Tersedia' setelah disetujui Admin."
+                              : defaultIncomingCondition === "Rusak"
+                              ? "⚠️ Status akan menjadi 'Rusak'."
+                              : "ℹ️ Status akan menjadi 'Perlu Pengecekan'."}
+                          </p>
+                        </div>
+
+                        {/* Pilihan Lokasi Tujuan Masuk */}
+                        <div>
+                          <label className="block text-[11px] font-semibold text-orange-950 mb-1">
+                            Dibawa ke (Lokasi Tujuan / Base):
+                          </label>
+                          <div className="flex gap-1.5">
+                            <input
+                              type="text"
+                              value={defaultIncomingLocation}
+                              onChange={(e) => setDefaultIncomingLocation(e.target.value)}
+                              placeholder="Gudang Regional 6 / Base"
+                              className="flex-1 px-2.5 py-1.5 bg-white border border-orange-300 rounded-lg text-xs outline-none focus:ring-1 focus:ring-orange-500 font-medium text-black"
+                            />
+                            {defaultIncomingLocation !== "Gudang Regional 6" && (
+                              <button
+                                type="button"
+                                onClick={() => setDefaultIncomingLocation("Gudang Regional 6")}
+                                className="px-2 py-1 bg-orange-200 hover:bg-orange-300 text-orange-900 rounded-lg text-[11px] font-semibold"
+                                title="Reset ke Gudang Regional 6"
+                              >
+                                Base Reg 6
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
                     )}
                   </div>
 
@@ -1420,16 +1502,90 @@ export default function ScanHomePage() {
                                       <span>Ditemukan di: {item.lokasiDitemukan}</span>
                                     </p>
                                   )}
-                                  {item.actionType === "DISMANTLE" && item.kondisiDismantle && (
-                                    <p className={`text-sm mt-1 font-medium flex items-center space-x-1 ${
-                                      item.kondisiDismantle === "Bagus" ? "text-green-700" : "text-red-700"
-                                    }`}>
-                                      <span>Kondisi: {item.kondisiDismantle}</span>
-                                    </p>
+                                  {item.actionType === "DISMANTLE" && (
+                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                      <span className="text-xs text-telkomsat-gray font-medium">Kondisi:</span>
+                                      <div className="inline-flex rounded-lg border border-orange-200 p-0.5 bg-white text-xs">
+                                        <button
+                                          type="button"
+                                          onClick={() => updateItem(item.cartItemId, { kondisiDismantle: "Bagus" })}
+                                          className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                                            (item.kondisiDismantle || "Bagus") === "Bagus"
+                                              ? "bg-green-600 text-white"
+                                              : "text-gray-600 hover:text-black"
+                                          }`}
+                                        >
+                                          🟢 Bagus
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => updateItem(item.cartItemId, { kondisiDismantle: "Rusak" })}
+                                          className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                                            item.kondisiDismantle === "Rusak"
+                                              ? "bg-red-600 text-white"
+                                              : "text-gray-600 hover:text-black"
+                                          }`}
+                                        >
+                                          🔴 Rusak
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => updateItem(item.cartItemId, { kondisiDismantle: "Tidak Diketahui" })}
+                                          className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                                            item.kondisiDismantle === "Tidak Diketahui"
+                                              ? "bg-amber-600 text-white"
+                                              : "text-gray-600 hover:text-black"
+                                          }`}
+                                        >
+                                          🟡 Cek Fisik
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {item.actionType === "FOUND" && (
+                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                      <span className="text-xs text-telkomsat-gray font-medium">Kondisi:</span>
+                                      <div className="inline-flex rounded-lg border border-green-200 p-0.5 bg-white text-xs">
+                                        <button
+                                          type="button"
+                                          onClick={() => updateItem(item.cartItemId, { kondisiBarang: "Bagus" })}
+                                          className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                                            (item.kondisiBarang || "Bagus") === "Bagus"
+                                              ? "bg-green-600 text-white"
+                                              : "text-gray-600 hover:text-black"
+                                          }`}
+                                        >
+                                          🟢 Bagus
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => updateItem(item.cartItemId, { kondisiBarang: "Rusak" })}
+                                          className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                                            item.kondisiBarang === "Rusak"
+                                              ? "bg-red-600 text-white"
+                                              : "text-gray-600 hover:text-black"
+                                          }`}
+                                        >
+                                          🔴 Rusak
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => updateItem(item.cartItemId, { kondisiBarang: "Tidak Diketahui" })}
+                                          className={`px-2 py-0.5 rounded-md font-medium transition-all ${
+                                            item.kondisiBarang === "Tidak Diketahui"
+                                              ? "bg-amber-600 text-white"
+                                              : "text-gray-600 hover:text-black"
+                                          }`}
+                                        >
+                                          🟡 Cek Fisik
+                                        </button>
+                                      </div>
+                                    </div>
                                   )}
                                 </div>
                               </div>
-                              <div className="mt-2 ml-12">
+                              <div className="mt-2 ml-12 flex flex-wrap items-center gap-2">
                                 <span
                                   className={`px-3 py-1 rounded-full text-xs font-semibold ${
                                     item.actionType === "MOVE"
@@ -1444,11 +1600,16 @@ export default function ScanHomePage() {
                                   {item.actionType === "MOVE" 
                                     ? "📦 Bawa Barang" 
                                     : item.actionType === "FOUND"
-                                    ? "✅ Barang Ditemukan"
+                                    ? `✅ Barang Ditemukan (${item.kondisiBarang || "Bagus"})`
                                     : item.actionType === "DISMANTLE"
                                     ? `🔧 Dismantle (${item.kondisiDismantle || "Bagus"})`
                                     : "⚠️ Lapor Rusak"}
                                 </span>
+                                {(item.actionType === "DISMANTLE" || item.actionType === "FOUND") && (
+                                  <span className="text-[11px] text-gray-500 font-medium">
+                                    Masuk ke: <strong className="text-gray-700">{item.lokasiDitemukan || "Gudang Regional 6"}</strong>
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <button

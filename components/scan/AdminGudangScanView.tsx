@@ -60,16 +60,18 @@ const MODE_LABELS: Record<
   UPDATE: { label: "Update Status", short: "Update", color: "bg-slate-600" },
   MOVE: { label: "Serah / Bawa", short: "Bawa", color: "bg-blue-600" },
   DAMAGE: { label: "Lapor Rusak", short: "Rusak", color: "bg-red-600" },
-  FOUND: { label: "Ditemukan (Legacy)", short: "Found", color: "bg-gray-400" },
-  DISMANTLE: { label: "Dismantle (Legacy)", short: "Dism.", color: "bg-gray-400" },
+  DISMANTLE: { label: "Masuk (Dismantle)", short: "Dismantle", color: "bg-orange-600" },
+  FOUND: { label: "Masuk (Ditemukan)", short: "Ditemukan", color: "bg-emerald-600" },
 };
 
-const ACTIVE_ADMIN_MODES: AdminScanMode[] = ["UPDATE", "MOVE", "DAMAGE"];
+const ACTIVE_ADMIN_MODES: AdminScanMode[] = ["UPDATE", "MOVE", "DAMAGE", "DISMANTLE", "FOUND"];
 
 const MODE_DESCRIPTIONS: Partial<Record<AdminScanMode, string>> = {
   UPDATE: "Perbarui status, lokasi, dan keterangan barang melalui panel Update Status.",
   MOVE: "Pilih penerima, isi nomor SPT dan lokasi tujuan untuk menyerahkan barang. Status barang menjadi Digunakan.",
   DAMAGE: "Isi lokasi barang dan keterangan kerusakan. Status barang menjadi Rusak saat disimpan.",
+  DISMANTLE: "Barang bekas bongkaran dari site yang masuk ke Gudang / Base. Kondisi Bagus akan berstatus Tersedia di Gudang Regional 6.",
+  FOUND: "Barang temuan yang masuk ke Gudang / Base. Kondisi Bagus akan berstatus Tersedia di Gudang Regional 6.",
 };
 
 function ItemRow({
@@ -77,13 +79,17 @@ function ItemRow({
   onToggle,
   onEdit,
   onRemove,
+  onUpdate,
 }: {
   item: AdminScanItem;
   onToggle: () => void;
   onEdit: () => void;
   onRemove: () => void;
+  onUpdate?: (partial: Partial<AdminScanItem>) => void;
 }) {
   const modeInfo = MODE_LABELS[item.mode] || MODE_LABELS.UPDATE;
+  const isIncoming = item.mode === "DISMANTLE" || item.mode === "FOUND";
+  const currentCondition = item.kondisiDismantle || item.kondisiBarang || (item.newStatus === "Rusak" ? "Rusak" : item.newStatus === "Perlu Pengecekan" ? "Tidak Diketahui" : "Bagus");
 
   return (
     <div
@@ -117,12 +123,75 @@ function ItemRow({
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-telkomsat-gray mt-0.5">
             {item.serialNumber && <span>SN: <span className="font-mono font-medium text-black">{item.serialNumber}</span></span>}
             {item.tagging && <span>Tag: <span className="font-mono font-medium text-black">{item.tagging}</span></span>}
-            {item.lokasiSaatIni && <span>Lokasi: <span className="font-medium text-black">{item.lokasiSaatIni}</span></span>}
+            {item.lokasiSaatIni && <span>Lokasi Asal: <span className="font-medium text-black">{item.lokasiSaatIni}</span></span>}
           </div>
           {item.mode === "UPDATE" && (item.newStatus || item.newLokasi) && (
             <p className="text-xs text-blue-600 mt-1 font-medium">
               Update → {item.newStatus || "Status tetap"} | {item.newLokasi || "Lokasi tetap"}
             </p>
+          )}
+
+          {isIncoming && (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="text-xs text-orange-950 font-semibold">Kondisi:</span>
+              <div className="inline-flex rounded-lg border border-orange-300 p-0.5 bg-white text-xs shadow-xs">
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdate?.({
+                      newStatus: "Tersedia",
+                      newLokasi: item.newLokasi || "Gudang Regional 6",
+                      kondisiDismantle: "Bagus",
+                      kondisiBarang: "Bagus",
+                    })
+                  }
+                  className={`px-2 py-0.5 rounded font-medium transition-all ${
+                    currentCondition === "Bagus"
+                      ? "bg-green-600 text-white"
+                      : "text-gray-600 hover:text-black"
+                  }`}
+                >
+                  🟢 Bagus (Tersedia)
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdate?.({
+                      newStatus: "Rusak",
+                      kondisiDismantle: "Rusak",
+                      kondisiBarang: "Rusak",
+                    })
+                  }
+                  className={`px-2 py-0.5 rounded font-medium transition-all ${
+                    currentCondition === "Rusak"
+                      ? "bg-red-600 text-white"
+                      : "text-gray-600 hover:text-black"
+                  }`}
+                >
+                  🔴 Rusak
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    onUpdate?.({
+                      newStatus: "Perlu Pengecekan",
+                      kondisiDismantle: "Tidak Diketahui",
+                      kondisiBarang: "Tidak Diketahui",
+                    })
+                  }
+                  className={`px-2 py-0.5 rounded font-medium transition-all ${
+                    currentCondition === "Tidak Diketahui"
+                      ? "bg-amber-600 text-white"
+                      : "text-gray-600 hover:text-black"
+                  }`}
+                >
+                  🟡 Cek Fisik
+                </button>
+              </div>
+              <span className="text-[11px] text-gray-500">
+                Masuk ke: <strong className="text-gray-700">{item.newLokasi || "Gudang Regional 6"}</strong>
+              </span>
+            </div>
           )}
         </div>
       </div>
@@ -244,6 +313,7 @@ export default function AdminGudangScanView() {
   const loadItemFromDb = useCallback(async (itemId: string) => {
     const data = await getSparepartItemById(itemId);
     if (!data) return null;
+    const isIncoming = defaultMode === "DISMANTLE" || defaultMode === "FOUND";
     return {
       idSparepart: data.id,
       mode: defaultMode,
@@ -253,9 +323,11 @@ export default function AdminGudangScanView() {
       lokasiSaatIni: data.lokasiSaatIni,
       status: data.status,
       keterangan: data.keterangan,
-      newStatus: data.status,
+      newStatus: isIncoming ? "Tersedia" : data.status,
       newKeterangan: data.keterangan || "",
-      newLokasi: data.lokasiSaatIni || "",
+      newLokasi: isIncoming ? "Gudang Regional 6" : (data.lokasiSaatIni || ""),
+      kondisiDismantle: "Bagus" as const,
+      kondisiBarang: "Bagus" as const,
     };
   }, [defaultMode]);
 
@@ -342,10 +414,15 @@ export default function AdminGudangScanView() {
       return;
     }
 
+    let effectiveLokasiTujuan = docMeta.lokasiTujuan.trim();
+    if (!effectiveLokasiTujuan && items.every((i) => i.mode === "DISMANTLE" || i.mode === "FOUND")) {
+      effectiveLokasiTujuan = "Gudang Regional 6";
+    }
+
     const needsTujuan = items.some(
-      (i) => i.mode === "MOVE" || i.mode === "DAMAGE" || i.mode === "FOUND"
+      (i) => i.mode === "MOVE" || i.mode === "DAMAGE" || i.mode === "FOUND" || i.mode === "DISMANTLE"
     );
-    if (needsTujuan && !docMeta.lokasiTujuan.trim()) {
+    if (needsTujuan && !effectiveLokasiTujuan) {
       toast.error("Lokasi tujuan / site wajib diisi");
       return;
     }
@@ -366,7 +443,7 @@ export default function AdminGudangScanView() {
         penerimaRole: penerima?.role,
         penerimaUserId: penerima?.id,
         nomorSpt: moveCount > 0 ? docMeta.nomorSpt.trim() : "",
-        lokasiTujuan: docMeta.lokasiTujuan.trim() || docMeta.lokasiSite.trim(),
+        lokasiTujuan: effectiveLokasiTujuan || docMeta.lokasiSite.trim() || "Gudang Regional 6",
         keteranganGlobal: items.some((item) => item.mode !== "UPDATE")
           ? docMeta.keteranganGlobal
           : undefined,
@@ -556,6 +633,7 @@ export default function AdminGudangScanView() {
                     onToggle={() => toggleSelect(item.id)}
                     onEdit={() => setEditingId(item.id)}
                     onRemove={() => removeItem(item.id)}
+                    onUpdate={(partial) => updateItem(item.id, partial)}
                   />
                 ))
               )}
@@ -718,16 +796,27 @@ export default function AdminGudangScanView() {
                   <div>
                     <label className="text-xs font-semibold">
                       {showMoveFields && showDamageFields ? "Lokasi tujuan / lokasi barang rusak" :
-                        showDamageFields ? "Lokasi barang rusak" : "Lokasi tujuan / site"}
+                        showDamageFields ? "Lokasi barang rusak" : "Lokasi tujuan / base"}
                     </label>
-                    <input
-                      list="lokasi-datalist"
-                      value={docMeta.lokasiTujuan}
-                      onChange={(e) =>
-                        setDocMeta({ lokasiTujuan: e.target.value })
-                      }
-                      className="w-full mt-1 px-3 py-2 border rounded-lg"
-                    />
+                    <div className="flex gap-1.5 mt-1">
+                      <input
+                        list="lokasi-datalist"
+                        value={docMeta.lokasiTujuan}
+                        onChange={(e) =>
+                          setDocMeta({ lokasiTujuan: e.target.value })
+                        }
+                        placeholder="Gudang Regional 6 / Site / dll"
+                        className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setDocMeta({ lokasiTujuan: "Gudang Regional 6" })}
+                        className="px-2.5 py-1 bg-orange-100 hover:bg-orange-200 text-orange-900 rounded-lg text-xs font-bold whitespace-nowrap"
+                        title="Set ke Gudang Regional 6"
+                      >
+                        Base Reg 6
+                      </button>
+                    </div>
                     {showMoveFields && showDamageFields && (
                       <p className="mt-1 text-xs text-telkomsat-gray">
                         Lokasi dan keterangan ini berlaku bersama untuk barang Serah/Bawa dan Lapor Rusak.

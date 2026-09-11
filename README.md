@@ -226,13 +226,17 @@ Urutan berikut menjelaskan alur layanan pengajuan dan verifikasi. Ketersediaan i
 | Jenis | Arti | Catatan |
 |---|---|---|
 | `OUT` | Barang keluar | Nomor SPT wajib pada pengajuan |
-| `MOVE` | Pemindahan | Nomor SPT wajib pada pengajuan |
-| `RETURN` | Pengembalian | Persetujuan ke Gudang dapat menambah stok gudang |
-| `DAMAGE` | Kerusakan | Mengubah kondisi dan perhitungan stok sesuai helper |
-| `FOUND` | Barang ditemukan | Tipe legacy masih ditangani sebagian alur |
-| `DISMANTLE` | Pembongkaran | Tipe legacy masih ditangani sebagian alur |
+| `MOVE` | Pemindahan / Bawa | Nomor SPT wajib pada pengajuan |
+| `RETURN` | Pengembalian | Persetujuan ke Gudang menambah stok gudang |
+| `DAMAGE` | Lapor Kerusakan | Mengubah kondisi menjadi Rusak dan mencatat lokasi/keterangan kerusakan |
+| `DISMANTLE` | Barang Masuk (Bekas Pembongkaran) | Barang bekas pemakaian/bongkaran dari site yang dibawa kembali ke Gudang Regional 6 / Base. Kondisi Bagus akan berstatus **Tersedia** di gudang setelah disetujui, Rusak berstatus **Rusak**, dan Tidak Diketahui berstatus **Perlu Pengecekan**. |
+| `FOUND` | Barang Masuk (Ditemukan) | Barang temuan yang dibawa masuk kembali ke Gudang Regional 6 / Base. Kondisi Bagus akan berstatus **Tersedia** di gudang setelah disetujui, Rusak berstatus **Rusak**. |
 
-Empat jenis aktif adalah OUT, MOVE, RETURN, dan DAMAGE. Pilihan yang muncul mengikuti halaman/scanner; beberapa komponen masih mempertahankan FOUND dan DISMANTLE untuk alur lama. Jenis dokumen BA Dismantle juga terpisah dari jenis transaksi legacy DISMANTLE.
+Aplikasi mendukung alur penuh untuk **OUT**, **MOVE**, **RETURN**, **DAMAGE**, **DISMANTLE**, dan **FOUND** baik pada Scanner Teknisi maupun Scanner Admin Gudang. Khusus untuk DISMANTLE dan FOUND, alur ini berfungsi sebagai **Barang Masuk (Bekas / Temuan)**:
+- **Dukungan Multi-Scan Cepat**: Scanner membaca banyak QR secara beruntun tanpa terhenti oleh popup modal per item.
+- **Preset Kondisi & Lokasi Masuk**: Teknisi/Admin dapat menentukan kondisi awal (Bagus / Rusak / Cek Fisik) dan lokasi tujuan default (Gudang Regional 6 / Base).
+- **Pengaturan Kondisi Interaktif Per Item**: Tiap item dalam daftar hasil scan atau keranjang dapat diubah kondisinya secara langsung (misal jika ada satu unit yang fisiknya rusak di antara beberapa unit bagus).
+- **Approval Pengajuan**: Pengajuan teknisi tetap berstatus `pending` dan memerlukan persetujuan Admin Gudang sebelum status barang menjadi `Tersedia` di gudang untuk mencegah spam data.
 
 `pending`, `completed`, dan `rejected` adalah **status transaksi**. Status barang fisik berbeda: `Tersedia`, `Digunakan`, `Rusak`, `Hilang`, `Maintenance`, atau `Perlu Pengecekan`. Atribut `cariFisik`, seperti `Sesuai` atau `Tidak Ditemukan`, juga merupakan kategori terpisah.
 

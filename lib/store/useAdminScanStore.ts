@@ -25,6 +25,7 @@ export interface AdminScanItem {
   newLokasi?: string;
   lokasiDitemukan?: string;
   kondisiDismantle?: KondisiDismantle;
+  kondisiBarang?: KondisiDismantle;
   selected: boolean;
   scanCount: number;
 }

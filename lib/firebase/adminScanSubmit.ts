@@ -14,6 +14,7 @@ function toSessionItem(item: AdminScanItem): SessionKeranjangItem {
       item.mode === "UPDATE" ? "MOVE" : item.mode,
     lokasiDitemukan: item.lokasiDitemukan,
     kondisiDismantle: item.kondisiDismantle,
+    kondisiBarang: item.kondisiBarang,
     createdAt: new Date(),
   };
 }
