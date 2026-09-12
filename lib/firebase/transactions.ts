@@ -706,22 +706,26 @@ export const getTransactions = async (
       // Always include orderBy to use the composite index (idSparepart ASC, createdAt DESC).
       // This is required for pagination (startAfter) when maxLimit is null.
       q = query(
-            collection(db, COLLECTIONS.TRANSAKSI),
-            where("idSparepart", "==", filters.idSparepart),
-            orderBy("createdAt", "desc"),
-            limitQuery(maxLimit ?? 200)
-          );
-    }
-    if (filters?.requestedByUid) {
-      q = !filters.idSparepart && !filters.startDate && !filters.endDate
-        ? query(collection(db, COLLECTIONS.TRANSAKSI), where("requestedByUid", "==", filters.requestedByUid), limitQuery(maxLimit ?? 200))
-        : query(q, where("requestedByUid", "==", filters.requestedByUid));
-    }
-    if (filters?.startDate) {
-      q = query(q, where("createdAt", ">=", Timestamp.fromDate(filters.startDate)));
-    }
-    if (filters?.endDate) {
-      q = query(q, where("createdAt", "<=", Timestamp.fromDate(filters.endDate)));
+        collection(db, COLLECTIONS.TRANSAKSI),
+        where("idSparepart", "==", filters.idSparepart),
+        orderBy("createdAt", "desc"),
+        limitQuery(maxLimit ?? 200)
+      );
+    } else if (filters?.requestedByUid) {
+      // For technician query: filter by requestedByUid to satisfy Firestore rules
+      // (resource.data.requestedByUid == auth.uid) without requiring custom composite indexes
+      q = query(
+        collection(db, COLLECTIONS.TRANSAKSI),
+        where("requestedByUid", "==", filters.requestedByUid),
+        limitQuery(maxLimit ?? 200)
+      );
+    } else {
+      if (filters?.startDate) {
+        q = query(q, where("createdAt", ">=", Timestamp.fromDate(filters.startDate)));
+      }
+      if (filters?.endDate) {
+        q = query(q, where("createdAt", "<=", Timestamp.fromDate(filters.endDate)));
+      }
     }
 
     let snapshot = await getDocs(q);
@@ -730,6 +734,16 @@ export const getTransactions = async (
     while (maxLimit === null && snapshot.docs.length === 200) {
       snapshot = await getDocs(query(q, startAfter(snapshot.docs[snapshot.docs.length - 1])));
       rows.push(...mapFirestoreDocs<Transaksi>(snapshot.docs));
+    }
+
+    // In-memory date filter (ensures accuracy when requestedByUid query is used)
+    if (filters?.startDate) {
+      const startTime = filters.startDate.getTime();
+      rows = rows.filter((t) => t.createdAt.getTime() >= startTime);
+    }
+    if (filters?.endDate) {
+      const endTime = filters.endDate.getTime();
+      rows = rows.filter((t) => t.createdAt.getTime() <= endTime);
     }
 
     // In-memory filters (until composite indexes are added for these fields)

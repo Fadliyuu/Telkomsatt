@@ -1070,14 +1070,12 @@ PDF dibuat setelah proses penyimpanan. Jika muncul kegagalan unduh, periksa tran
 1. Login, buka **Scan QR** (`/scan`), dan izinkan kamera. Pencarian SN/tagging dapat membantu saat label sulit dipindai.
 2. Pilih aksi yang tersedia. Scanner saat ini menampilkan **Bawa** (`MOVE`), **Rusak** (`DAMAGE`), serta **Dismantle** dan **Ditemukan** untuk alur legacy.
 3. Periksa nama, SN/tagging, status, dan lokasi hasil scan, lalu susun keranjang.
-4. Buka **Pengajuan Saya** (`/transaksi/keranjang`). Isi lokasi tujuan dan keterangan/bukti yang diminta. Untuk OUT/MOVE, perhatikan kendala input SPT di bawah.
+4. Buka **Pengajuan Saya** (`/transaksi/keranjang`). Isi lokasi tujuan, keterangan/bukti yang diminta, dan **Nomor SPT** jika keranjang memuat item pengajuan OUT/MOVE.
 5. Periksa seluruh item, lalu kirim jika formulir dapat memenuhi validasi. **Menunggu Approval** / `pending` berarti pengajuan tercatat dan menunggu keputusan Admin Gudang.
-6. Pantau notifikasi dan **Riwayat** (`/teknisi/riwayat`). Jika ada penolakan, baca alasannya sebelum membuat pengajuan baru.
+6. Pantau notifikasi dan **Riwayat** (`/teknisi/riwayat`). Query riwayat teknisi telah dibatasi otomatis menggunakan `requestedByUid` (UID akun teknisi yang login) sehingga pemuatan riwayat aman dan sesuai dengan Firebase Security Rules.
 7. Bila barang belum terdaftar, minta Admin Gudang mencatatnya. Fitur Quick Add lama pada scanner tidak menggantikan izin pembuatan barang yang dibatasi rules.
 
-**Kendala formulir saat ini:** keranjang mewajibkan nomor SPT untuk OUT/MOVE, tetapi belum menampilkan input untuk mengisinya. Akibatnya pengajuan **Bawa/MOVE** melalui halaman tersebut tertahan validasi. Pengisian input SPT memerlukan perbaikan aplikasi; untuk penyerahan operasional yang diproses langsung oleh gudang, koordinasikan penggunaan **Serah / Bawa** oleh Admin Gudang. Jalur langsung ini mencatat transaksi selesai dan tidak melalui pending/approval teknisi.
-
-**Kendala riwayat:** query riwayat teknisi belum membatasi `requestedByUid` pada query Firestore, sementara rules membatasi pembacaan transaksi milik pengguna. Dengan rules repository, pemuatan riwayat dapat ditolak meskipun login berhasil. Jika terjadi, minta Admin Gudang memeriksa hasil transaksi; daftar kosong karena gagal dimuat tidak membuktikan pengajuan belum tersimpan.
+**Catatan formulir & riwayat:** Input Nomor SPT telah tersedia langsung pada keranjang pengajuan saat memuat transaksi jenis OUT/MOVE. Riwayat transaksi teknisi dan ringkasan dashboard teknisi juga telah disesuaikan dengan scoping `requestedByUid`, memastikan query Firestore berhasil tanpa kendala izin keamanan (*permission denied*).
 
 Keranjang/draft yang disimpan di browser membantu melanjutkan pekerjaan di perangkat yang sama. Draft lokal belum merupakan bukti pengajuan di database dan tidak menjamin perpindahan draft antarperangkat. Periksa kembali daftar saat membuka aplikasi setelah jaringan terputus atau setelah berganti akun.
 

@@ -372,11 +372,11 @@ Sumber: [Scan Gudang](components/scan/AdminGudangScanView.tsx), [store](lib/stor
 6. Isi tujuan, keterangan, dan bukti sesuai form. Kirim bila validasi dapat dipenuhi.
 7. Pengajuan yang berhasil membuat transaksi pending per item dan menunggu Admin Gudang.
 
-### 8.2 Kendala SPT
+### 8.2 Pengisian Nomor SPT pada OUT/MOVE
 
-OUT/MOVE mewajibkan SPT pada submit dan helper. Namun keranjang mendeklarasikan state nomor SPT tanpa merender input atau mengisi state tersebut. Akibatnya **Bawa/MOVE tertahan validasi SPT pada UI ini**.
+OUT/MOVE mewajibkan SPT pada submit dan helper. Form keranjang permintaan (`/transaksi/keranjang`) telah dilengkapi field input **Nomor SPT (Surat Perintah Tugas)** yang otomatis divalidasi ketika terdapat item bertipe Bawa/OUT/MOVE. Hal ini memastikan pengajuan tidak tertahan validasi.
 
-Perbaikan membutuhkan perubahan aplikasi. Untuk pekerjaan penyerahan langsung oleh Admin Gudang, tersedia Serah/Bawa pada bagian 7. Jalur ini menghasilkan completed dan tidak melewati pending/approval teknisi.
+Selain alur pengajuan teknisi, untuk pekerjaan penyerahan langsung oleh Admin Gudang, tersedia menu Serah/Bawa (Bagian 7) yang menghasilkan status transaksi `completed` secara instan tanpa melalui alur pending/approval.
 
 ### 8.3 Barang baru dan aksi legacy
 
@@ -384,11 +384,11 @@ Quick Add lama masih ada, tetapi rules membatasi create/update unit ke Admin Gud
 
 FOUND/DISMANTLE memiliki kondisi tambahan. Helper approval hanya memetakan status baru secara eksplisit untuk OUT/MOVE, DAMAGE, RETURN. Jangan menganggap pemrosesan kondisi legacy sama dengan jalur langsung Gudang.
 
-### 8.4 Riwayat dan pengiriman ulang
+### 8.4 Riwayat dan Scoping Query Teknisi
 
-Riwayat memakai getTransactions yang belum memfilter UID pengaju di query Firestore, sementara rules membatasi teknisi ke transaksi miliknya. Query dapat ditolak. Daftar kosong setelah gagal dimuat bukan bukti pengajuan belum tersimpan; konfirmasi melalui Gudang.
+Pemuatan riwayat transaksi teknisi (`/teknisi/riwayat`) dan dashboard teknisi telah dibatasi menggunakan `requestedByUid: user.id` pada query Firestore. Hal ini memenuhi ketentuan Firebase Security Rules `resource.data.requestedByUid == request.auth.uid` sehingga teknisi dapat memuat riwayat transaksi miliknya secara aman dan terbebas dari kesalahan *permission-denied*.
 
-Pengiriman keranjang dapat berhasil sebagian. Cocokkan transaksi pending dan reservasi sebelum mencoba ulang. Jangan menghapus reservasi hanya agar dapat mengirim ulang tanpa memeriksa transaksi pemiliknya.
+Pengiriman keranjang dapat berhasil sebagian jika ada kegagalan jaringan. Cocokkan transaksi pending dan reservasi sebelum mencoba ulang. Jangan menghapus reservasi hanya agar dapat mengirim ulang tanpa memeriksa transaksi pemiliknya.
 
 Sumber: [scanner](app/scan/page.tsx), [keranjang](app/transaksi/keranjang/page.tsx), [riwayat](components/teknisi/RiwayatTransaksiView.tsx).
 

@@ -32,14 +32,13 @@ export default function TeknisiDashboardView() {
 
   const loadStats = useCallback(async () => {
     try {
-      const name = namaTeknisi || user?.nama || "";
       const start = new Date();
       start.setDate(start.getDate() - 30);
 
       const all = await getTransactions({
         startDate: start,
         endDate: new Date(),
-        namaTeknisi: name || undefined,
+        requestedByUid: user?.id,
       });
 
       const sorted = all.sort(
@@ -52,7 +51,7 @@ export default function TeknisiDashboardView() {
     } finally {
       setLoading(false);
     }
-  }, [namaTeknisi, user?.nama]);
+  }, [user?.id]);
 
   useEffect(() => {
     loadStats();
