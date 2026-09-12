@@ -398,21 +398,20 @@ Firestore adalah database dokumen. ERD menunjukkan **relasi logis**; FK bukan fo
 
 ```mermaid
 erDiagram
-    USERS o|--o{ TRANSAKSI : mengajukan
-    USERS o|--o{ TRANSAKSI : menyetujui
-    USERS o|--o{ TRANSAKSI : menolak
-    USERS o|--o{ AKTIVITAS : melakukan
+    USERS o|..o{ TRANSAKSI : mengajukan
+    USERS o|..o{ TRANSAKSI : menyetujui
+    USERS o|..o{ TRANSAKSI : menolak
+    USERS o|..o{ AKTIVITAS : melakukan
 
-    SPAREPARTS o|--o{ SPAREPART_ITEMS : mengelompokkan
+    SPAREPARTS o|..o{ SPAREPART_ITEMS : mengelompokkan
 
     SPAREPART_ITEMS o|..o{ TRANSAKSI : referensi_unit
     SPAREPARTS o|..o{ TRANSAKSI : referensi_katalog_alternatif
 
     SPAREPART_ITEMS ||--o| ITEM_LOCKS : memiliki_reservasi
-    TRANSAKSI ||--o| ITEM_LOCKS : memiliki_reservasi_pending
-    USERS o|--o{ ITEM_LOCKS : mengajukan_reservasi
+    TRANSAKSI ||..o| ITEM_LOCKS : memiliki_reservasi_pending
+    USERS o|..o{ ITEM_LOCKS : mengajukan_reservasi
 
-    SESSION_KERANJANG ||--o{ SESSION_KERANJANG_ITEM : memuat
     USERS {
         string id PK
         string email
@@ -474,21 +473,6 @@ erDiagram
         string alamat
         string keterangan
     }
-    SESSION_KERANJANG {
-        string id PK
-        string sessionToken
-        string namaTeknisi
-        string status
-        timestamp createdAt
-    }
-    SESSION_KERANJANG_ITEM {
-        string id PK
-        string idSessionKeranjang FK
-        string idSparepart FK
-        string jenisAksi
-        string lokasiDitemukan
-        string kondisiDismantle
-    }
     NOTIFICATIONS {
         string id PK
         string title
@@ -515,6 +499,7 @@ erDiagram
 ### Penjelasan relasi
 
 > **Catatan:** Diagram menampilkan atribut utama dan hubungan logis antardokumen. Referensi transaksi menuju unit fisik atau katalog bersifat alternatif sesuai jalur pencatatan. ID dokumen tidak selalu disimpan kembali sebagai atribut. Hubungan antardokumen tidak menunjukkan penerapan batasan *foreign key* otomatis oleh Cloud Firestore.
+> Garis putus-putus (`..`) menunjukkan hubungan *non-identifying* (entitas anak memiliki identitas/ID independen), sedangkan garis penuh (`--`) pada `ITEM_LOCKS` menunjukkan hubungan *identifying* karena ID dokumen reservasi sama persis dengan ID unit fisik.
 
 - `users/{uid}` memakai UID Firebase Authentication. Password dikelola Authentication, bukan disimpan dalam dokumen pengguna.
 - `sparepart_items.idSparepart` dapat kosong untuk unit tanpa katalog.
@@ -522,6 +507,7 @@ erDiagram
 - Lokasi pada item/transaksi disimpan sebagai string; tidak semuanya merupakan ID koleksi `lokasi`.
 - `item_locks/{itemId}` merupakan reservasi pengajuan pending (ID dokumen sama dengan ID unit fisik), dilepas setelah keputusan (approval/rejection).
 - Penerima notifikasi berupa array UID/role, bukan tabel penghubung relasional.
+- Keranjang operasional pada aplikasi klien dikelola melalui local state browser (`useCartStore`); koleksi `session_keranjang` bersifat opsional/draft sehingga tidak disertakan dalam ERD inti skripsi.
 - Model TypeScript umumnya memakai `Date`; Firestore memakai timestamp dan helper mengonversinya.
 
 | Koleksi | Isi utama | Model |
@@ -532,10 +518,10 @@ erDiagram
 | `lokasi` | Master lokasi | `Lokasi` |
 | `transaksi` | Pengajuan dan keputusan | `Transaksi` |
 | `item_locks` | Reservasi pending | Payload helper transaksi |
-| `session_keranjang` | Sesi tersimpan | `SessionKeranjang` |
-| `session_keranjang_item` | Item sesi tersimpan | `SessionKeranjangItem` |
 | `notifications` | Isi, target, pembaca | `AppNotification` |
 | `aktivitas` | Aksi, aktor, target, waktu | `AuditLogItem` |
+| `session_keranjang` | Draft keranjang (opsional) | `SessionKeranjang` |
+| `session_keranjang_item` | Item draft keranjang (opsional) | `SessionKeranjangItem` |
 | `teknisi_guest` | Koleksi legacy | Ditolak rules saat ini |
 
 ## 10. UML use case
