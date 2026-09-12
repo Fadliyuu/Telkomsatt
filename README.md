@@ -398,13 +398,20 @@ Firestore adalah database dokumen. ERD menunjukkan **relasi logis**; FK bukan fo
 
 ```mermaid
 erDiagram
-    USERS ||--o{ TRANSAKSI : mengajukan
-    USERS o|--o{ TRANSAKSI : memverifikasi
-    USERS ||--o{ AKTIVITAS : melakukan
+    USERS o|--o{ TRANSAKSI : mengajukan
+    USERS o|--o{ TRANSAKSI : menyetujui
+    USERS o|--o{ TRANSAKSI : menolak
+    USERS o|--o{ AKTIVITAS : melakukan
+
     SPAREPARTS o|--o{ SPAREPART_ITEMS : mengelompokkan
-    SPAREPART_ITEMS o|--o{ TRANSAKSI : referensi_item
-    SPAREPARTS o|--o{ TRANSAKSI : fallback_katalog
-    TRANSAKSI ||--o| ITEM_LOCKS : reservasi_pending
+
+    SPAREPART_ITEMS o|..o{ TRANSAKSI : referensi_unit
+    SPAREPARTS o|..o{ TRANSAKSI : referensi_katalog_alternatif
+
+    SPAREPART_ITEMS ||--o| ITEM_LOCKS : memiliki_reservasi
+    TRANSAKSI ||--o| ITEM_LOCKS : memiliki_reservasi_pending
+    USERS o|--o{ ITEM_LOCKS : mengajukan_reservasi
+
     SESSION_KERANJANG ||--o{ SESSION_KERANJANG_ITEM : memuat
     USERS {
         string id PK
@@ -437,7 +444,7 @@ erDiagram
     }
     TRANSAKSI {
         string id PK
-        string idSparepart FK
+        string idSparepart "ID unit atau katalog sesuai jalur"
         string jenisTransaksi
         string nomorSpt
         string statusTransaksi
@@ -454,7 +461,7 @@ erDiagram
         timestamp createdAt
     }
     ITEM_LOCKS {
-        string itemId PK
+        string itemId PK "ID dokumen sama dengan ID unit"
         string transactionId FK
         string requestedByUid FK
         string status
@@ -507,11 +514,13 @@ erDiagram
 
 ### Penjelasan relasi
 
+> **Catatan:** Diagram menampilkan atribut utama dan hubungan logis antardokumen. Referensi transaksi menuju unit fisik atau katalog bersifat alternatif sesuai jalur pencatatan. ID dokumen tidak selalu disimpan kembali sebagai atribut. Hubungan antardokumen tidak menunjukkan penerapan batasan *foreign key* otomatis oleh Cloud Firestore.
+
 - `users/{uid}` memakai UID Firebase Authentication. Password dikelola Authentication, bukan disimpan dalam dokumen pengguna.
 - `sparepart_items.idSparepart` dapat kosong untuk unit tanpa katalog.
-- `transaksi.idSparepart` biasanya ID barang fisik, tetapi helper masih memiliki fallback ID katalog. Dua relasi pada ERD adalah alternatif referensi, bukan dua FK wajib sekaligus.
+- `transaksi.idSparepart` menunjuk ke ID barang fisik (`sparepart_items`), dengan referensi katalog alternatif (`spareparts`) untuk alur non-SN/legacy. Dua relasi pada ERD adalah alternatif referensi logis, bukan dua FK wajib sekaligus.
 - Lokasi pada item/transaksi disimpan sebagai string; tidak semuanya merupakan ID koleksi `lokasi`.
-- `item_locks/{itemId}` merupakan reservasi pengajuan pending, dilepas setelah keputusan.
+- `item_locks/{itemId}` merupakan reservasi pengajuan pending (ID dokumen sama dengan ID unit fisik), dilepas setelah keputusan (approval/rejection).
 - Penerima notifikasi berupa array UID/role, bukan tabel penghubung relasional.
 - Model TypeScript umumnya memakai `Date`; Firestore memakai timestamp dan helper mengonversinya.
 
