@@ -747,82 +747,91 @@ Diagram aktivitas (Activity Diagram) memodelkan alur kerja sistem operasional (*
 
 ### A. Activity diagram alur sistem (Project Overview)
 
-Diagram ini menggambarkan alur kerja global seluruh modul aplikasi Telkomsat dari proses autentikasi terpusat hingga pembagian jalur operasional sesuai peran pengguna (*role-based access*).
+Diagram ini menggambarkan alur kerja global seluruh modul aplikasi Telkomsat dari proses autentikasi terpusat hingga pembagian jalur operasional mandiri sesuai peran pengguna (*role-based access*).
 
 ```mermaid
 flowchart TD
     subgraph USR["Pengguna (Aktor)"]
         U_START([Mulai]) --> U_OPEN[Buka aplikasi web atau Android]
-        U_OPEN --> U_LOGIN[Input email dan password]
-        U_DASH[Akses dashboard sesuai hak akses role]
+        U_OPEN --> U_LOGIN[Input email dan kata sandi]
+        U_DASH[Akses dashboard sesuai peran]
         
-        %% Percabangan alur per role
-        U_DASH --> T_ACTION[Teknisi: Scan QR item fisik, susun keranjang, kirim pengajuan]
-        U_DASH --> G_ACTION[Admin Gudang: Kelola inventaris, verifikasi pending, transaksi langsung]
-        U_DASH --> S_ACTION[Supervisor: Pantau statistik stok, audit aktivitas, ekspor laporan]
-        U_DASH --> A_ACTION[Admin Sistem: Manajemen akun pengguna & audit hak akses]
+        %% Percabangan alur mandiri per peran
+        U_DASH --> T_PATH[Teknisi: Pindai QR unit, susun keranjang, dan kirim pengajuan]
+        U_DASH --> G_PATH[Admin Gudang: Kelola inventaris, verifikasi pending, atau transaksi langsung]
+        U_DASH --> S_PATH[Supervisor: Pantau dashboard inventaris dan ekspor laporan]
+        U_DASH --> A_PATH[Admin Sistem: Kelola akun pengguna dan pantau aktivitas sistem]
         
-        T_ACTION --> U_LOGOUT[Pengguna melakukan logout]
-        G_ACTION --> U_LOGOUT
-        S_ACTION --> U_LOGOUT
-        A_ACTION --> U_LOGOUT
+        T_PATH --> U_LOGOUT[Pilih keluar / logout]
+        G_PATH --> U_LOGOUT
+        S_PATH --> U_LOGOUT
+        A_PATH --> U_LOGOUT
         U_LOGOUT --> U_END([Selesai])
     end
 
     subgraph SYS["Sistem Aplikasi Telkomsat"]
-        U_LOGIN --> S_AUTH[Proses autentikasi & buat session cookie]
-        S_CHECK{Kredensial valid?}
+        U_LOGIN --> S_VERIFY[Verifikasi email dan kata sandi]
+        S_CHECK{Autentikasi berhasil?}
         S_CHECK -->|Tidak| S_ERR[Tampilkan pesan kesalahan login]
         S_ERR --> U_LOGIN
-        S_CHECK -->|Ya| U_DASH
-        U_LOGOUT --> S_CLEAR[Hapus session cookie & reset state autentikasi]
+        S_CHECK -->|Ya| S_FETCH[Ambil profil dan peran pengguna]
+        S_FETCH --> S_ROUTE[Tampilkan dashboard sesuai hak akses]
+        S_ROUTE --> U_DASH
+        
+        U_LOGOUT --> S_LOGOUT[Akhiri sesi pengguna dan kembali ke halaman login]
     end
 
     subgraph CLD["Firebase & Cloud Services"]
-        S_AUTH --> C_FA[Verifikasi via Firebase Authentication]
-        C_FA --> C_DB[Ambil data profil pengguna & role dari Firestore]
-        C_DB --> S_CHECK
-        T_ACTION -.-> C_TX[(Simpan transaksi pending & item_locks)]
-        G_ACTION -.-> C_SP[(Perbarui stok katalog & unit fisik)]
+        S_VERIFY --> C_AUTH[Pemeriksaan akun di Firebase Authentication]
+        C_AUTH --> S_CHECK
+        S_FETCH --> C_USER[Baca dokumen profil pengguna di Firestore]
+        C_USER --> S_FETCH
+        T_PATH -.-> C_TX[(Penyimpanan transaksi pengajuan & reservasi)]
+        G_PATH -.-> C_STOCK[(Pembaruan data unit fisik & stok katalog)]
     end
 ```
 
+> **Catatan:** Pengguna hanya menjalankan cabang operasional yang sesuai dengan peran aktifnya. Pembaruan data transaksi dan stok barang hanya terjadi pada alur yang mengeksekusi mutasi inventaris.
+
 ### B. Activity diagram pengajuan dan verifikasi transaksi
 
-Diagram ini memodelkan siklus transaksi dua arah antara Teknisi (pengaju mutasi/kerusakan) dan Admin Gudang (verifikator), termasuk mekanisme reservasi atomik (*item lock*) untuk mencegah pengajuan ganda secara bersamaan.
+Diagram ini memodelkan siklus transaksi mutasi atau kerusakan unit barang yang diajukan oleh Teknisi dan diverifikasi oleh Admin Gudang, dilengkapi mekanisme penguncian unit (*reservation lock*) untuk mencegah pengajuan ganda secara bersamaan.
 
 ```mermaid
 flowchart TD
     subgraph TEK["Teknisi"]
         T_START([Mulai]) --> T_SCAN[Pindai QR Code unit fisik di menu /scan]
-        T_SCAN --> T_ADD[Pilih aksi: MOVE / DAMAGE / dll. & tambah ke keranjang]
+        T_SCAN --> T_ADD[Pilih jenis transaksi yang tersedia bagi Teknisi & masukkan ke keranjang]
         T_ADD --> T_CART[Buka halaman Keranjang Permintaan]
-        T_CART --> T_FORM[Isi lokasi tujuan, nomor SPT jika MOVE/OUT, keterangan, & foto]
+        T_CART --> T_FORM[Lengkapi data wajib sesuai jenis transaksi, catatan, dan foto bukti]
         T_FORM --> T_SUBMIT[Klik tombol Kirim Pengajuan]
         T_NOTIF[Terima notifikasi status pengajuan] --> T_HIST[Buka menu Riwayat Transaksi]
         T_HIST --> T_END([Selesai])
     end
 
     subgraph SYS["Sistem Aplikasi Telkomsat"]
-        T_SUBMIT --> S_VAL{Input & SPT valid?}
+        T_SUBMIT --> S_VAL{Data pengajuan valid?}
         S_VAL -->|Tidak| S_ERR_FORM[Tampilkan pesan validasi formulir]
         S_ERR_FORM --> T_FORM
-        S_VAL -->|Ya| S_LOCK_CHK[Jalankan transaksi atomik cek item_locks]
+        S_VAL -->|Ya| S_LOCK_CHK[Periksa reservasi item pada database]
         
         S_IS_LOCKED{Ada reservasi pending aktif?}
-        S_IS_LOCKED -->|Ya| S_ERR_LOCK[Tolak pengajuan: Item sedang dalam proses pending]
+        S_IS_LOCKED -->|Ya| S_ERR_LOCK[Tolak pengajuan: Item sedang memiliki pengajuan aktif]
         S_ERR_LOCK --> T_END
-        S_IS_LOCKED -->|Tidak| S_CREATE_TX[Simpan transaksi pending & buat reservasi item_locks]
+        S_IS_LOCKED -->|Tidak| S_CREATE_TX[Simpan transaksi berstatus pending dan buat reservasi item]
         
-        S_CREATE_TX --> S_PUSH_ADM[Kirim notifikasi push ke Admin Gudang]
+        S_CREATE_TX --> S_NOTIF_ADM[Kirim notifikasi pengajuan ke Admin Gudang]
         
         G_DECIDE{Keputusan verifikasi?}
-        G_DECIDE -->|Tolak| S_REJECT[Eksekusi executeAtomicRejection: set status rejected, simpan alasan, & lepas item_locks]
-        G_DECIDE -->|Setujui| S_APPROVE[Eksekusi executeAtomicApproval: set status completed, update unit fisik, update stok katalog, & lepas item_locks]
+        G_DECIDE -->|Tolak| G_INPUT_REASON[Admin Gudang mengisi alasan penolakan]
+        G_INPUT_REASON --> S_REJECT[Catat penolakan, simpan alasan, dan lepaskan reservasi]
         
-        S_REJECT --> S_NOTIF_USER[Kirim notifikasi keputusan ke Teknisi]
-        S_APPROVE --> S_NOTIF_USER
-        S_NOTIF_USER --> T_NOTIF
+        G_DECIDE -->|Setujui| S_CHK_UNIT[Periksa status pengajuan dan kondisi unit]
+        S_CHK_UNIT --> S_APPROVE[Proses persetujuan, perbarui status/stok, dan lepaskan reservasi]
+        
+        S_REJECT --> S_NOTIF_TEK[Kirim notifikasi hasil keputusan ke Teknisi]
+        S_APPROVE --> S_NOTIF_TEK
+        S_NOTIF_TEK --> T_NOTIF
     end
 
     subgraph DB["Firestore Database"]
@@ -835,53 +844,59 @@ flowchart TD
     end
 
     subgraph ADM["Admin Gudang"]
-        S_PUSH_ADM --> G_OPEN[Buka menu Approval Transaksi /spareparts/verifikasi]
-        G_OPEN --> G_REVIEW[Tinjau identitas fisik, nomor SPT, catatan, dan foto bukti]
+        S_NOTIF_ADM --> G_OPEN[Buka menu Approval Transaksi /spareparts/verifikasi]
+        G_OPEN --> G_REVIEW[Tinjau data unit fisik, kelengkapan SPT, catatan, dan foto]
         G_REVIEW --> G_DECIDE
     end
 ```
 
+> **Catatan:** Pengajuan keranjang diproses dan diverifikasi per unit barang. Pada tahap persetujuan (*approval*), transaksi basis data memperbarui `statusTransaksi` menjadi `completed`, memindahkan lokasi serta status fisik unit pada `sparepart_items`, menyesuaikan counter stok gudang pada `spareparts`, serta menghapus kuncian di `item_locks`. Jika ditolak (*rejection*), transaksi ditandai `rejected` dengan alasan penolakan dan kuncian dilepas tanpa mengubah data fisik barang maupun stok.
+
 ### C. Activity diagram transaksi langsung Admin Gudang
 
-Diagram ini memodelkan alur kerja penyerahan barang secara langsung di gudang (*fast-path transaction*) oleh Admin Gudang tanpa melewati alur *pending* dan *approval*, yang sekaligus mencetak Berita Acara / Surat Jalan PDF secara otomatis.
+Diagram ini memodelkan alur kerja penyerahan barang secara langsung di gudang (*direct / fast-path transaction*) oleh Admin Gudang tanpa melewati status *pending* dan *approval*, yang menghasilkan pencatatan selesai seketika dan penyusunan dokumen Berita Acara / Surat Jalan.
 
 ```mermaid
 flowchart TD
     subgraph ADM["Admin Gudang"]
         A_START([Mulai]) --> A_OPEN[Buka menu Scan Gudang /scan/gudang]
-        A_OPEN --> A_SCAN[Multi-scan QR Code unit fisik atau input SN/tagging]
-        A_SCAN --> A_MODE[Pilih mode transaksi: Serah-Bawa MOVE / Rusak / Return / Update]
-        A_MODE --> A_INPUT[Input metadata: nama teknisi penerima, nomor SPT, lokasi, catatan]
+        A_OPEN --> A_SCAN[Pindai multi-QR unit fisik atau input manual identitas barang]
+        A_SCAN --> A_MODE[Pilih aksi operasional gudang: Penyerahan, Kerusakan, Penerimaan, atau Pembaruan Data]
+        A_MODE --> A_INPUT[Lengkapi data serah terima: penerima, nomor SPT, lokasi tujuan, dan catatan]
         A_INPUT --> A_SUBMIT[Klik tombol Proses & Simpan Transaksi]
         
-        A_PDF[Unduh Berita Acara / Surat Jalan PDF] --> A_HANDOVER[Serahkan fisik sparepart & lembar Berita Acara ke teknisi]
-        A_HANDOVER --> A_END([Selesai])
+        A_RESULT[Tinjau daftar item yang berhasil dan gagal diproses] --> A_PDF[Unduh dokumen Berita Acara / Surat Jalan PDF]
+        A_PDF --> A_HANDOVER[Serahkan fisik barang dan salinan Berita Acara kepada penerima]
     end
 
     subgraph SYS["Sistem Aplikasi Telkomsat"]
-        A_SUBMIT --> S_VAL{Data & otorisasi valid?}
+        A_SUBMIT --> S_VAL{Data dan otorisasi valid?}
         S_VAL -->|Tidak| S_ERR[Tampilkan pesan peringatan data belum lengkap]
         S_ERR --> A_INPUT
-        S_VAL -->|Ya| S_BATCH[Eksekusi batch submit submitAdminScanBatch]
+        S_VAL -->|Ya| S_BATCH[Proses penyimpanan transaksi langsung per item]
         
-        S_BATCH --> S_DB_WRITE[Update data unit fisik, sinkronkan stok katalog, simpan transaksi completed]
+        S_BATCH --> S_DB_WRITE[Perbarui data unit dan stok katalog sesuai aturan jenis transaksi]
         S_DB_WRITE --> S_AUDIT[Catat audit log ke koleksi aktivitas]
-        S_AUDIT --> S_GEN_PDF[Generate otomatis Berita Acara / Dokumen Serah Terima PDF]
-        S_GEN_PDF --> A_PDF
+        S_AUDIT --> S_REPORT[Tampilkan daftar item berhasil dan gagal]
+        S_REPORT --> A_RESULT
+        
+        A_PDF --> S_GEN_DOC[Buat dokumen transaksi berdasarkan item yang berhasil]
     end
 
     subgraph DB["Firestore Database"]
-        S_DB_WRITE --> D_ITEMS[(sparepart_items: update lokasiSaatIni & status)]
-        S_DB_WRITE --> D_SP[(spareparts: stokGudang & stokTotal disinkronkan)]
-        S_DB_WRITE --> D_TX[(transaksi: statusTransaksi completed instan)]
-        S_AUDIT --> D_LOG[(aktivitas: audit log tersimpan)]
+        S_DB_WRITE --> D_ITEMS[(sparepart_items: pembaruan status dan lokasi)]
+        S_DB_WRITE --> D_SP[(spareparts: penyesuaian stok sesuai aturan mutasi)]
+        S_DB_WRITE --> D_TX[(transaksi: pencatatan transaksi berstatus completed)]
+        S_AUDIT --> D_LOG[(aktivitas: pencatatan audit log)]
     end
 
-    subgraph REC["Teknisi / Personil Penerima"]
-        A_HANDOVER --> R_RECV[Menerima unit fisik sparepart & menandatangani Berita Acara]
-        R_RECV --> R_END([Selesai])
+    subgraph REC["Penerima (Teknisi / Site)"]
+        A_HANDOVER --> R_RECV[Periksa fisik sparepart dan tandatangani Berita Acara]
+        R_RECV --> END_PROC([Selesai])
     end
 ```
+
+> **Catatan:** Transaksi langsung menyimpan riwayat transaksi dengan status `completed` secara instan tanpa membuat dokumen `item_locks`. Penyesuaian stok katalog mengikuti aturan aksi: aksi penyerahan (`MOVE`) atau kerusakan (`DAMAGE`) mengurangi stok gudang, aksi penerimaan (`RETURN`/`FOUND`/`DISMANTLE` kondisi baik) menambah stok gudang, sedangkan pembaruan data (`UPDATE`) hanya memperbarui atribut lokasi atau kondisi fisik unit tanpa memutasi stok katalog. Kegiatan serah terima fisik dan tanda tangan dokumen merupakan proses verifikasi lapangan yang dilakukan setelah berkas PDF siap.
 
 ### D. Flowchart teknisi
 
