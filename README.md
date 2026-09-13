@@ -278,13 +278,13 @@ Sistem digambarkan sebagai satu proses utama dengan empat entitas pengguna serta
 
 ```mermaid
 flowchart LR
-    ADM[Admin Sistem] -->|Data akun dan perubahan hak akses| SYS((Sistem Inventaris Telkomsat))
-    SYS -->|Hasil pengelolaan akun dan aktivitas sistem| ADM
+    ADM[Admin Sistem] -->|Kredensial data akun perubahan hak akses dan permintaan aktivitas| SYS((Sistem Inventaris Telkomsat))
+    SYS -->|Hasil autentikasi pengelolaan akun dan informasi aktivitas| ADM
 
-    GD[Admin Gudang] -->|Data inventaris dan lokasi transaksi langsung keputusan verifikasi serta permintaan informasi| SYS
-    SYS -->|Informasi inventaris pengajuan hasil transaksi laporan dan notifikasi| GD
+    GD[Admin Gudang] -->|Kredensial data inventaris dan lokasi transaksi langsung keputusan verifikasi serta permintaan informasi dan notifikasi| SYS
+    SYS -->|Hasil autentikasi informasi inventaris pengajuan hasil transaksi laporan dan notifikasi| GD
 
-    TK[Teknisi] -->|Kredensial scan QR pengajuan mutasi dan permintaan riwayat| SYS
+    TK[Teknisi] -->|Kredensial berkas foto scan QR pengajuan mutasi permintaan riwayat permintaan notifikasi dan penandaan notifikasi dibaca| SYS
     SYS -->|Hasil autentikasi detail unit riwayat transaksi sendiri dan notifikasi| TK
 
     SP[Supervisor] -->|Kredensial filter pemantauan dan permintaan laporan| SYS
@@ -293,7 +293,7 @@ flowchart LR
     SYS -->|Kredensial dan permintaan verifikasi sesi| FA[Firebase Authentication]
     FA -->|Token autentikasi dan status verifikasi| SYS
 
-    SYS -->|Berkas foto dokumentasi unit| CL[Cloudinary]
+    SYS -->|Berkas foto unit dan bukti transaksi| CL[Cloudinary]
     CL -->|URL foto tersimpan| SYS
 ```
 
@@ -324,7 +324,7 @@ flowchart TB
     CL[Cloudinary]
 
     %% 1.0 Identitas dan akses
-    ADM -->|Pengelolaan data dan hak akses akun| P1
+    ADM -->|Kredensial pengelolaan data dan hak akses akun| P1
     GD -->|Kredensial login| P1
     TK -->|Kredensial login| P1
     SP -->|Kredensial login| P1
@@ -346,7 +346,7 @@ flowchart TB
     P2 -->|Detail informasi inventaris| GD
 
     %% 3.0 Transaksi dan verifikasi
-    TK -->|Pengajuan mutasi bukti foto SPT dan tujuan| P3
+    TK -->|Pengajuan mutasi berkas foto SPT dan tujuan| P3
     GD -->|Transaksi langsung dan keputusan verifikasi| P3
     P1 -->|Identitas sesi terautentikasi| P3
     D1 -->|Profil peran dan status akun| P3
@@ -362,11 +362,13 @@ flowchart TB
     P3 -->|Hasil pemrosesan transaksi dan daftar pending| GD
 
     %% 4.0 Laporan dan pemantauan
-    SP -->|Parameter filter dan periode laporan| P4
+    TK -->|Permintaan riwayat transaksi sendiri| P4
     GD -->|Permintaan laporan mutasi dan stok| P4
+    SP -->|Parameter filter dan periode laporan| P4
     D2 -->|Data inventaris terkini| P4
     D3 -->|Riwayat transaksi| P4
     D5 -->|Log aktivitas sistem| P4
+    P4 -->|Riwayat transaksi sendiri| TK
     P4 -->|Laporan inventaris dan mutasi| GD
     P4 -->|Dashboard analitik dan laporan komprehensif| SP
 
@@ -375,9 +377,9 @@ flowchart TB
     P2 -->|Aksi master inventaris| P5
     P3 -->|Peristiwa mutasi dan verifikasi transaksi| P5
     D5 -->|Daftar notifikasi dan log aktivitas| P5
-    P5 -->|Pencatatan notifikasi dan log aktivitas| D5
-    TK -->|Permintaan notifikasi dan tanda baca| P5
-    GD -->|Permintaan notifikasi dan tanda baca| P5
+    P5 -->|Pencatatan notifikasi log aktivitas dan pembaruan status baca| D5
+    TK -->|Permintaan notifikasi dan penandaan notifikasi dibaca| P5
+    GD -->|Permintaan notifikasi dan penandaan notifikasi dibaca| P5
     ADM -->|Pemantauan riwayat log aktivitas| P5
     P5 -->|Notifikasi transaksi| TK
     P5 -->|Notifikasi pengajuan dan transaksi| GD
@@ -392,6 +394,7 @@ Rincian **proses 3.0: transaksi dan verifikasi**, memodelkan pemrosesan per item
 flowchart TB
     T[Teknisi]
     G[Admin Gudang]
+    P1((1.0 Identitas dan akses))
     A((3.1 Identifikasi item dan bukti))
     B((3.2 Validasi data transaksi))
     C((3.3 Simpan pengajuan dan reservasi))
@@ -405,8 +408,12 @@ flowchart TB
     N((5.0 Notifikasi dan aktivitas))
     CL[Cloudinary]
 
+    %% Identitas sesi dari proses 1.0 (sesuai DFD Level 0)
+    P1 -->|Identitas sesi terautentikasi pengaju| B
+    P1 -->|Identitas sesi terautentikasi pemroses| E
+
     %% 3.1 Identifikasi item dan bukti
-    T -->|QR dan pilihan item| A
+    T -->|QR pilihan item dan berkas foto| A
     I -->|Identitas kondisi dan lokasi| A
     A -->|Berkas foto| CL
     CL -->|URL foto| A
