@@ -795,7 +795,7 @@ flowchart TD
     end
 ```
 
-> **Catatan Alur:** Pengguna hanya menjalankan satu cabang operasional sesuai peran aktifnya. Pembaruan data transaksi dan mutasi stok barang hanya terjadi pada alur yang mengeksekusi perpindahan atau perubahan status inventaris.
+> **Catatan Alur:** Pengguna menjalankan cabang operasional sesuai peran aktif dan hak aksesnya. Pencatatan pengajuan tidak langsung mengubah stok. Pembaruan data unit dan penyesuaian stok dilakukan pada proses yang berhasil menerapkan perubahan inventaris sesuai aturan transaksi.
 
 ### B. Activity diagram pengajuan dan verifikasi transaksi
 
@@ -859,11 +859,11 @@ flowchart TD
     end
 ```
 
-> **Catatan Ruang Lingkup & Atomisitas:** Alur pemrosesan setelah pengiriman pengajuan ditampilkan untuk satu unit barang. Pemeriksaan reservasi dan pembuatan transaksi pending dilaksanakan dalam satu transaksi basis data atomik per unit (`runTransaction`) untuk mencegah konflik konkurensi (*race condition*). Pada tahap persetujuan (*approval*), transaksi basis data memperbarui `statusTransaksi` menjadi `completed`, memindahkan lokasi serta status fisik unit pada `sparepart_items`, menyesuaikan counter stok gudang pada `spareparts`, serta menghapus kuncian di `item_locks`. Jika ditolak (*rejection*), transaksi ditandai `rejected` dengan alasan penolakan dan kuncian dilepas tanpa mengubah data fisik barang maupun stok.
+> **Catatan Ruang Lingkup & Atomisitas:** Alur pemrosesan setelah pengiriman pengajuan ditampilkan untuk satu unit barang. Pemeriksaan reservasi dan pembuatan transaksi pending dilaksanakan dalam satu transaksi basis data atomik per unit (`runTransaction`) untuk mencegah konflik konkurensi (*race condition*). Pada persetujuan yang berhasil, sistem mengubah `statusTransaksi` menjadi `completed`, memperbarui data unit pada `sparepart_items`, menyesuaikan jumlah stok pada `spareparts` apabila diperlukan sesuai aturan jenis transaksi, serta melepaskan reservasi pada `item_locks`. Pada penolakan yang berhasil, sistem mencatat status `rejected` beserta alasannya dan melepaskan reservasi tanpa menerapkan perubahan barang maupun stok yang diajukan.
 
 ### C. Activity diagram transaksi langsung Admin Gudang
 
-Diagram ini memodelkan alur kerja penyerahan barang secara langsung di gudang (*direct / fast-path transaction*) oleh Admin Gudang tanpa melewati status *pending* dan *approval*, yang menghasilkan pencatatan selesai seketika dan penyusunan dokumen Berita Acara / Surat Jalan.
+Diagram ini menggambarkan pemrosesan tindakan inventaris secara langsung oleh Admin Gudang, meliputi penyerahan, kerusakan, penerimaan, dan pembaruan data. Transaksi yang berhasil diproses dicatat sebagai selesai tanpa melalui tahap pengajuan dan persetujuan terpisah. Dokumen dibuat sesuai kebutuhan tindakan.
 
 ```mermaid
 flowchart TD
@@ -877,7 +877,7 @@ flowchart TD
         A_RESULT[Tinjau daftar item yang berhasil dan gagal diproses]
         A_PDF[Unduh dokumen Berita Acara / Surat Jalan PDF]
         A_PDF --> A_IS_HANDOVER{Tindakan memerlukan serah terima fisik?}
-        A_IS_HANDOVER -->|Ya| A_HANDOVER[Serahkan fisik barang dan salinan Berita Acara kepada penerima]
+        A_IS_HANDOVER -->|Ya| A_HANDOVER[Lakukan serah terima fisik item yang berhasil diproses]
         A_IS_HANDOVER -->|Tidak| END_PROC([Selesai])
     end
 
@@ -892,10 +892,12 @@ flowchart TD
         S_AUDIT --> S_REPORT[Tampilkan daftar item berhasil dan gagal]
         S_REPORT --> A_RESULT
         
-        A_RESULT --> S_CHK_DOC{Terdapat item berhasil & butuh dokumen?}
-        S_CHK_DOC -->|Ya| S_GEN_DOC[Buat dokumen transaksi berdasarkan item yang berhasil]
+        A_RESULT --> S_HAS_SUCCESS{Ada item berhasil diproses?}
+        S_HAS_SUCCESS -->|Tidak| END_PROC
+        S_HAS_SUCCESS -->|Ya| S_CHK_DOC{Tindakan memerlukan dokumen?}
+        S_CHK_DOC -->|Ya| S_GEN_DOC[Buat dokumen berdasarkan item yang berhasil]
         S_GEN_DOC --> A_PDF
-        S_CHK_DOC -->|Tidak| END_PROC
+        S_CHK_DOC -->|Tidak| A_IS_HANDOVER
     end
 
     subgraph DB["Firestore Database"]
@@ -906,12 +908,12 @@ flowchart TD
     end
 
     subgraph REC["Penerima (Teknisi / Site)"]
-        A_HANDOVER --> R_RECV[Periksa fisik sparepart dan tandatangani Berita Acara]
+        A_HANDOVER --> R_RECV[Periksa barang dan tandatangani dokumen apabila diperlukan]
         R_RECV --> END_PROC
     end
 ```
 
-> **Catatan:** Transaksi langsung menyimpan riwayat transaksi dengan status `completed` secara instan tanpa membuat dokumen `item_locks`. Penyesuaian stok katalog mengikuti aturan aksi: aksi penyerahan (`MOVE`) atau kerusakan (`DAMAGE`) mengurangi stok gudang, aksi penerimaan (`RETURN`/`FOUND`/`DISMANTLE` kondisi baik) menambah stok gudang, sedangkan pembaruan data (`UPDATE`) hanya memperbarui atribut lokasi atau kondisi fisik unit tanpa memutasi stok katalog. Kegiatan serah terima fisik dan tanda tangan dokumen merupakan proses verifikasi lapangan yang dilakukan setelah berkas PDF siap.
+> **Catatan:** Pemrosesan dilakukan per unit barang. Transaksi yang berhasil dicatat dengan status `completed`. Perubahan lokasi, kondisi unit, dan jumlah stok mengikuti aturan tindakan serta keadaan unit sebelum dan sesudah pemrosesan. Sistem menampilkan hasil pemrosesan masing-masing unit. Dokumen dan serah terima fisik hanya dilakukan apabila diperlukan.
 
 ### D. Flowchart teknisi
 
