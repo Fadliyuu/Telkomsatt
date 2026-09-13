@@ -1080,130 +1080,187 @@ Berikut adalah empat diagram alir (*flowchart*) terperinci yang memodelkan logik
 
 #### 1. Flowchart login dan hak akses
 
-Diagram ini memodelkan proses autentikasi akun, validasi kredensial melalui Firebase Auth, pembentukan sesi server, pemeriksaan status aktif pengguna di Firestore, hingga pengarahan dashboard sesuai hak akses (*Role-Based Access Control*):
+Diagram ini memodelkan proses autentikasi akun, validasi kredensial melalui Firebase Auth, pembentukan sesi server via `/api/auth/session`, pemeriksaan keberadaan dan status aktif profil pengguna di koleksi `users`, hingga pengarahan antarmuka dashboard sesuai hak akses (*Role-Based Access Control*).
 
 ```mermaid
 flowchart TD
     A([Mulai]) --> B[Buka halaman portal / login]
     B --> C[Input email dan password]
     C --> D{Kredensial lengkap?}
-    D -->|Tidak| E[Tampilkan pesan peringatan input]
+    D -->|Tidak| E[Tampilkan pesan peringatan kelengkapan input]
     E --> C
     D -->|Ya| F[Kirim permintaan autentikasi ke Firebase Auth]
     F --> G{Kredensial valid?}
-    G -->|Tidak| H[Tampilkan pesan: Email atau password salah]
+    G -->|Tidak| H[Tampilkan pesan kegagalan autentikasi]
     H --> C
     G -->|Ya| I[Dapatkan ID Token Firebase]
     I --> J[Panggil API /api/auth/session untuk buat session cookie __session]
     J --> K{Cookie sesi berhasil dibuat?}
-    K -->|Tidak| L[Tampilkan error: Gagal membuat sesi login]
+    K -->|Tidak| L[Tampilkan pesan kegagalan pembuatan sesi]
     L --> C
     K -->|Ya| M[Ambil data profil pengguna dari koleksi users berdasarkan UID]
-    M --> N{Status akun aktif?}
+    M --> N_EXISTS{Profil pengguna ditemukan?}
+    N_EXISTS -->|Tidak| N_ERR[Tampilkan error: Profil pengguna tidak ditemukan di database]
+    N_ERR --> P[Hapus sesi dan logout]
+    N_EXISTS -->|Ya| N{Status akun aktif?}
     N -->|Tidak / Nonaktif| O[Tampilkan error: Akun dinonaktifkan. Hubungi admin]
-    O --> P[Hapus sesi dan logout]
+    O --> P
     P --> C
-    N -->|Ya / Aktif| Q{Peran pengguna / Role?}
-    Q -->|admin| R1[Buka Dashboard Admin Sistem & Menu Manajemen Pengguna]
-    Q -->|admin_gudang| R2[Buka Dashboard Admin Gudang, Inventaris, Scan Gudang, & Verifikasi]
-    Q -->|teknisi| R3[Buka Dashboard Teknisi, Scan QR Pengajuan, & Riwayat Sendiri]
-    Q -->|supervisor| R4[Buka Dashboard Supervisor, Pemantauan Inventaris, & Laporan]
+    N -->|Ya / Aktif| Q{Peran aktif pengguna / Role?}
+    Q -->|admin| R1[Arahkan ke Dashboard Admin Sistem & Menu Manajemen Pengguna]
+    Q -->|admin_gudang| R2[Arahkan ke Dashboard Admin Gudang, Inventaris, Scan Gudang, & Verifikasi]
+    Q -->|teknisi| R3[Arahkan ke Dashboard Teknisi, Scan QR Pengajuan, & Riwayat Sendiri]
+    Q -->|supervisor| R4[Arahkan ke Dashboard Supervisor, Pemantauan Inventaris, & Laporan]
+    Q -->|Peran tidak dikenali / Lainnya| R_UNKNOWN[Tampilkan error: Peran tidak dikenali atau tidak memiliki hak akses]
+    R_UNKNOWN --> P
     R1 --> S([Selesai])
     R2 --> S
     R3 --> S
     R4 --> S
 ```
 
+> **Catatan Implementasi RBAC:** Pengarahan dashboard merupakan navigasi awal antarmuka. Penegakan hak akses (*authorization*) sesungguhnya ditegakkan secara berlapis melalui middleware server (`middleware.ts`), otorisasi handler API (`/api/*`), pemetaan peran domain (`lib/rbac.ts`), dan aturan keamanan basis data Firestore (*Firestore Security Rules*).
+
+---
+
 #### 2. Flowchart pengajuan transaksi (Teknisi)
 
-Diagram ini menggambarkan alur kerja Teknisi dari pemindaian QR unit, pemilihan aksi tindakan, pengisian formulir bukti dan nomor SPT, pemeriksaan kunci reservasi atomik (*race condition*), hingga pencatatan transaksi berstatus `pending`:
+Diagram ini menggambarkan alur kerja Teknisi dari pemindaian QR unit fisik, pemilihan aksi mutasi sesuai antarmuka scanner, pengisian formulir bukti dan nomor SPT (wajib untuk tindakan OUT/MOVE), pemrosesan transaksi atomik per item di Firestore untuk memeriksa `item_locks` aktif, hingga pencatatan transaksi berstatus `pending`.
 
 ```mermaid
 flowchart TD
-    T_START([Mulai]) --> T_AUTH{Sudah terautentikasi?}
-    T_AUTH -->|Tidak| T_LOGIN[Arahkan ke alur login]
+    T_START([Mulai]) --> T_AUTH{Pengguna terautentikasi?}
+    T_AUTH -->|Tidak| T_LOGIN[Arahkan ke halaman login]
     T_LOGIN --> T_START
     T_AUTH -->|Ya| T_OPEN[Buka menu Scan QR /scan]
-    T_OPEN --> T_SCAN[Pindai QR Code pada unit fisik atau cari manual]
+    T_OPEN --> T_SCAN[Pindai QR Code pada unit fisik atau cari manual berdasarkan SN/Tag]
     T_SCAN --> T_FOUND{Unit fisik ditemukan di database?}
     T_FOUND -->|Tidak| T_NOT_FOUND[Tampilkan modal: QR tidak dikenal]
     T_NOT_FOUND --> T_SCAN
-    T_FOUND -->|Ya| T_SHOW[Tampilkan detail nama perangkat, SN, tagging, dan lokasi saat ini]
-    T_SHOW --> T_ACT[Pilih aksi tindakan mutasi: MOVE / DAMAGE / DISMANTLE / FOUND]
-    T_ACT --> T_ADD_CART[Tambahkan item ke keranjang belanja antarmuka]
+    T_FOUND -->|Ya| T_SHOW[Tampilkan detail nama perangkat, SN, tagging, status, dan lokasi saat ini]
+    T_SHOW --> T_ACT[Pilih aksi tindakan mutasi: Bawa / Rusak / Dismantle / Ditemukan]
+    T_ACT --> T_ADD_CART[Tambahkan item ke keranjang pengajuan transaksi antarmuka]
     T_ADD_CART --> T_MORE{Tambah item lain ke keranjang?}
     T_MORE -->|Ya| T_SCAN
     T_MORE -->|Tidak| T_CART[Buka halaman keranjang pengajuan /transaksi/keranjang]
-    T_CART --> T_INPUT[Input lokasi tujuan, keterangan/bukti foto, dan nomor SPT]
-    T_INPUT --> T_VAL_SPT{Aksi memuat OUT atau MOVE?}
+    T_CART --> T_INPUT[Input lokasi tujuan, keterangan, bukti foto opsional, dan nomor SPT]
+    T_INPUT --> T_VAL_SPT{Tindakan memuat aksi OUT atau MOVE?}
     T_VAL_SPT -->|Ya| T_CHK_SPT{Nomor SPT terisi?}
-    T_CHK_SPT -->|Tidak| T_ERR_SPT[Tampilkan error: Nomor SPT wajib diisi]
+    T_CHK_SPT -->|Tidak| T_ERR_SPT[Tampilkan error: Nomor SPT wajib diisi untuk OUT / MOVE]
     T_ERR_SPT --> T_INPUT
-    T_CHK_SPT -->|Ya| T_SUBMIT[Klik tombol Ajukan Transaksi]
-    T_VAL_SPT -->|Tidak| T_SUBMIT
-    T_SUBMIT --> T_LOOP_START[Mulai iterasi per item via runTransaction atomik]
-    T_LOOP_START --> T_CHK_LOCK{Item memiliki dokumen item_locks aktif?}
-    T_CHK_LOCK -->|Ya| T_LOCK_ERR[Item berstatus pending ganda: tolak pengajuan item ini]
-    T_LOCK_ERR --> T_NEXT_ITEM
-    T_CHK_LOCK -->|Tidak| T_SAVE_TX[Simpan transaksi berstatus pending di koleksi transaksi]
-    T_SAVE_TX --> T_SET_LOCK[Buat dokumen kunci reservasi di koleksi item_locks]
-    T_SET_LOCK --> T_NEXT_ITEM{Masih ada item berikutnya dalam daftar?}
+    T_CHK_SPT -->|Ya| T_VAL_REQ{Identitas pengaju terverifikasi lengkap?}
+    T_VAL_SPT -->|Tidak| T_VAL_REQ
+    T_VAL_REQ -->|Tidak| T_ERR_REQ[Tampilkan error: Pengaju transaksi harus terautentikasi]
+    T_ERR_REQ --> T_INPUT
+    T_VAL_REQ -->|Ya| T_SUBMIT[Klik tombol Ajukan Transaksi]
+    
+    T_SUBMIT --> T_LOOP_START[Mulai iterasi per item daftar pengajuan]
+    
+    subgraph TX_ATOMIC["Transaksi Atomik per Item (runTransaction)"]
+        T_TX_RUN[Mulai runTransaction Firestore]
+        T_TX_RUN --> T_CHK_LOCK{Item memiliki dokumen item_locks berstatus pending?}
+        T_CHK_LOCK -->|Ya| T_ABORT[Batalkan transaksi runTransaction: throw error pengajuan ganda]
+        T_CHK_LOCK -->|Tidak| T_READ_ITEM[Baca data unit dari sparepart_items / spareparts]
+        T_READ_ITEM --> T_SAVE_TX[Tulis dokumen transaksi baru berstatus pending]
+        T_SAVE_TX --> T_SET_LOCK[Tulis dokumen kunci reservasi di koleksi item_locks]
+        T_SET_LOCK --> T_COMMIT[Commit transaksi atomik unit berhasil]
+    end
+
+    T_LOOP_START --> TX_ATOMIC
+    T_ABORT --> T_RECORD_FAIL[Catat hasil item: Gagal - Sedang memiliki pengajuan aktif]
+    T_COMMIT --> T_RECORD_OK[Catat hasil item: Berhasil diajukan berstatus pending]
+    T_RECORD_FAIL --> T_NEXT_ITEM
+    T_RECORD_OK --> T_NEXT_ITEM{Masih ada item berikutnya dalam daftar pengajuan?}
     T_NEXT_ITEM -->|Ya| T_LOOP_START
-    T_NEXT_ITEM -->|Tidak| T_NOTIF[Kirim notifikasi pengajuan ke Admin Gudang]
-    T_NOTIF --> T_SUMMARY[Sajikan ringkasan hasil pengajuan per item kepada Teknisi]
+    T_NEXT_ITEM -->|Tidak| T_POST_NOTIF[Kirim notifikasi ringkasan pengajuan ke Admin Gudang]
+    T_POST_NOTIF --> T_SUMMARY[Sajikan ringkasan hasil pengajuan per item kepada Teknisi]
     T_SUMMARY --> T_END([Selesai])
 ```
 
+> **Catatan Pengajuan & Status Barang:**
+> - Pengajuan beberapa item diproses secara terpisah per item/transaksi Firestore, sehingga dimungkinkan terjadi keberhasilan sebagian (*partial success*) apabila salah satu item sedang terkunci oleh pengajuan lain.
+> - Pada tahap pengajuan berstatus `pending`, lokasi fisik, kondisi unit, dan jumlah stok barang di gudang **belum mengalami perubahan** sampai transaksi disetujui oleh Admin Gudang.
+> - Notifikasi dibuat di luar eksekusi `runTransaction` agar tidak terpicu berulang kali apabila Firestore melakukan *transaction retry*.
+
+---
+
 #### 3. Flowchart persetujuan dan penolakan transaksi (Admin Gudang)
 
-Diagram ini memodelkan proses verifikasi transaksi oleh Admin Gudang, verifikasi status `pending` transaksi secara atomik, percabangan persetujuan (pembaruan status unit, penyesuaian stok katalog, dan status `completed`) atau penolakan (pencatatan alasan dan status `rejected`), serta pelepasan dokumen kunci reservasi `item_locks`:
+Diagram ini memodelkan proses verifikasi transaksi oleh Admin Gudang, verifikasi atomik bahwa transaksi masih berstatus `pending`, percabangan persetujuan (pembaruan atribut unit sesuai jenis transaksi, penyesuaian stok katalog, pembaruan transaksi menjadi `completed`) atau penolakan (pencatatan alasan dan status `rejected`), serta pelepasan dokumen kunci reservasi `item_locks` yang terkait.
 
 ```mermaid
 flowchart TD
     V_START([Mulai]) --> V_OPEN[Admin Gudang buka menu Approval Transaksi /spareparts/verifikasi]
-    V_OPEN --> V_LOAD[Muat daftar transaksi berstatus pending]
+    V_OPEN --> V_LOAD[Muat daftar transaksi berstatus pending dari koleksi transaksi]
     V_LOAD --> V_EMPTY{Ada transaksi pending?}
-    V_EMPTY -->|Tidak| V_NO_DATA[Tampilkan pesan antrean kosong]
+    V_EMPTY -->|Tidak| V_NO_DATA[Tampilkan antrean kosong]
     V_NO_DATA --> V_END([Selesai])
-    V_EMPTY -->|Ya| V_SELECT[Pilih salah satu transaksi pending untuk ditinjau]
-    V_SELECT --> V_REVIEW[Periksa data teknisi, nomor SPT, kondisi fisik, bukti foto, & tujuan]
+    V_EMPTY -->|Ya| V_SELECT[Pilih salah satu transaksi pending untuk diverifikasi]
+    V_SELECT --> V_REVIEW[Tinjau data teknisi pengaju, nomor SPT, catatan bukti, dan lokasi tujuan]
     V_REVIEW --> V_DECIDE{Keputusan verifikasi Admin Gudang?}
     
     %% Cabang Penolakan
     V_DECIDE -->|Tolak| V_REJ_INPUT[Input alasan penolakan transaksi]
-    V_REJ_INPUT --> V_REJ_VAL{Alasan penolakan terisi?}
+    V_REJ_INPUT --> V_REJ_VAL{Alasan penolakan diisi?}
     V_REJ_VAL -->|Tidak| V_REJ_ERR[Tampilkan error: Alasan penolakan wajib diisi]
     V_REJ_ERR --> V_REJ_INPUT
-    V_REJ_VAL -->|Ya| V_REJ_TX[Mulai transaksi atomik runTransaction di Firestore]
-    V_REJ_TX --> V_REJ_CHK{Status transaksi masih pending?}
-    V_REJ_CHK -->|Tidak| V_ERR_PROCESSED[Tolak eksekusi: Transaksi sudah diproses sebelumnya]
-    V_ERR_PROCESSED --> V_END
-    V_REJ_CHK -->|Ya| V_REJ_SET[Update statusTransaksi menjadi rejected dan catat rejectReason]
-    V_REJ_SET --> V_DEL_LOCK_REJ[Hapus dokumen kunci reservasi di koleksi item_locks]
-    V_DEL_LOCK_REJ --> V_AUDIT_REJ[Catat audit log penolakan ke koleksi aktivitas]
-    V_AUDIT_REJ --> V_NOTIF_REJ[Kirim notifikasi penolakan ke Teknisi pengaju]
+    V_REJ_VAL -->|Ya| V_REJ_TX_START[Panggil executeAtomicRejection via runTransaction]
+    
+    subgraph REJ_ATOMIC["Transaksi Atomik Penolakan (executeAtomicRejection)"]
+        V_REJ_READ[Baca dokumen transaksi berdasarkan ID]
+        V_REJ_READ --> V_REJ_CHK{Status transaksi masih pending?}
+        V_REJ_CHK -->|Tidak| V_REJ_ABORT[Batalkan: Transaksi sudah diproses sebelumnya]
+        V_REJ_CHK -->|Ya| V_REJ_WRITE[Update statusTransaksi: rejected, catat verifikator dan rejectReason]
+        V_REJ_WRITE --> V_REJ_DEL_LOCK[Hapus dokumen kunci item_locks milik item terkait]
+        V_REJ_DEL_LOCK --> V_REJ_COMMIT[Commit penolakan transaksi berhasil]
+    end
+
+    V_REJ_TX_START --> REJ_ATOMIC
+    V_REJ_ABORT --> V_ERR_REJ[Tampilkan pesan kegagalan: Transaksi sudah berubah status]
+    V_ERR_REJ --> V_END
+    V_REJ_COMMIT --> V_POST_REJ[Operasi Pasca-Commit Penolakan]
+    V_POST_REJ --> V_AUDIT_REJ[Catat audit log penolakan ke koleksi aktivitas via helper audit]
+    V_POST_REJ --> V_NOTIF_REJ[Kirim notifikasi penolakan ke akun Teknisi pengaju]
     V_NOTIF_REJ --> V_DONE_REJ[Tampilkan konfirmasi: Pengajuan berhasil ditolak]
     V_DONE_REJ --> V_END
 
     %% Cabang Persetujuan
-    V_DECIDE -->|Setujui| V_APP_TX[Mulai transaksi atomik runTransaction di Firestore]
-    V_APP_TX --> V_APP_CHK{Status transaksi masih pending?}
-    V_APP_CHK -->|Tidak| V_ERR_PROCESSED
-    V_APP_CHK -->|Ya| V_UPDATE_ITEM[Perbarui data unit pada sparepart_items: lokasiSaatIni dan status]
-    V_UPDATE_ITEM --> V_ADJUST_STOCK{Perlu penyesuaian stok katalog spareparts?}
-    V_ADJUST_STOCK -->|Ya| V_MUTATE_STOCK[Sesuaikan stokGudang dan stokTotal sesuai aturan jenis aksi]
-    V_ADJUST_STOCK -->|Tidak| V_UPDATE_TX
-    V_MUTATE_STOCK --> V_UPDATE_TX[Update statusTransaksi menjadi completed dan catat verifikator]
-    V_UPDATE_TX --> V_DEL_LOCK_APP[Hapus dokumen kunci reservasi di koleksi item_locks]
-    V_DEL_LOCK_APP --> V_AUDIT_APP[Catat audit log persetujuan ke koleksi aktivitas]
-    V_AUDIT_APP --> V_NOTIF_APP[Kirim notifikasi persetujuan ke Teknisi pengaju]
+    V_DECIDE -->|Setujui| V_APP_TX_START[Panggil executeAtomicApproval via runTransaction]
+    
+    subgraph APP_ATOMIC["Transaksi Atomik Persetujuan (executeAtomicApproval)"]
+        V_APP_READ[Baca dokumen transaksi dan unit sparepart_items terkait]
+        V_APP_READ --> V_APP_CHK{Status transaksi masih pending?}
+        V_APP_CHK -->|Tidak| V_APP_ABORT[Batalkan: Transaksi sudah diproses sebelumnya]
+        V_APP_CHK -->|Ya| V_APP_MUT_ITEM[Perbarui atribut unit pada sparepart_items sesuai jenis transaksi]
+        V_APP_MUT_ITEM --> V_ADJUST_STOCK{Perlu penyesuaian stok katalog spareparts?}
+        V_ADJUST_STOCK -->|Ya| V_MUTATE_STOCK[Update stokGudang dan stokTotal katalog sesuai aturan mutasi]
+        V_ADJUST_STOCK -->|Tidak| V_APP_WRITE_TX
+        V_MUTATE_STOCK --> V_APP_WRITE_TX[Update statusTransaksi: completed dan catat data verifikator]
+        V_APP_WRITE_TX --> V_APP_DEL_LOCK[Hapus dokumen kunci item_locks milik item terkait]
+        V_APP_DEL_LOCK --> V_APP_COMMIT[Commit persetujuan transaksi berhasil]
+    end
+
+    V_APP_TX_START --> APP_ATOMIC
+    V_APP_ABORT --> V_ERR_APP[Tampilkan pesan kegagalan: Transaksi sudah berubah status]
+    V_ERR_APP --> V_END
+    V_APP_COMMIT --> V_POST_APP[Operasi Pasca-Commit Persetujuan]
+    V_POST_APP --> V_AUDIT_APP[Catat audit log persetujuan ke koleksi aktivitas via helper audit]
+    V_POST_APP --> V_NOTIF_APP[Kirim notifikasi persetujuan ke akun Teknisi pengaju]
     V_NOTIF_APP --> V_DONE_APP[Tampilkan konfirmasi: Transaksi berhasil disetujui]
     V_DONE_APP --> V_END
 ```
 
+> **Catatan Penolakan, Pelepasan Reservasi, & Batas Operasi:**
+> - Baik persetujuan maupun penolakan diimplementasikan menggunakan `runTransaction` Firestore (`executeAtomicApproval` dan `executeAtomicRejection`) untuk menjamin status `pending` belum berubah saat dieksekusi.
+> - Pada penolakan, data fisik unit pada `sparepart_items` dan stok katalog `spareparts` **tetap tidak berubah** (*untouched*).
+> - Penghapusan kunci reservasi di `item_locks` mengacu langsung pada dokumen `itemId` yang sedang diproses.
+> - Pencatatan audit log ke koleksi `aktivitas` dan pengiriman pesan ke `notifications` dieksekusi di luar transaksi atomik (*post-commit helper* secara *best-effort*).
+
+---
+
 #### 4. Flowchart transaksi langsung (Admin Gudang)
 
-Diagram ini memodelkan pemrosesan batch transaksi langsung melalui menu Scan Gudang tanpa melalui alur pengajuan/reservasi *pending*, mencakup validasi input per mode, pembaruan unit dan katalog atomik berstatus `completed`, hingga pembuatan dokumen formal Surat Jalan dan Berita Acara:
+Diagram ini menggambarkan pemrosesan transaksi langsung melalui menu Scan Gudang tanpa melalui tahap pengajuan berstatus `pending`. Pemrosesan meliputi validasi masukan, pembaruan data sesuai mode yang dipilih, pencatatan hasil transaksi, penanganan opsi dokumen formal, dan penyajian ringkasan keberhasilan atau kegagalan setiap item.
 
 ```mermaid
 flowchart TD
@@ -1211,7 +1268,7 @@ flowchart TD
     G_AUTH -->|Tidak| G_LOGIN[Arahkan ke login]
     G_LOGIN --> G_START
     G_AUTH -->|Ya| G_OPEN[Buka menu Scan Gudang /scan/gudang]
-    G_OPEN --> G_MODE[Pilih salah satu dari 5 mode operasional: UPDATE / MOVE / DAMAGE / DISMANTLE / FOUND]
+    G_OPEN --> G_MODE[Pilih salah satu mode: UPDATE / MOVE / DAMAGE / DISMANTLE / FOUND]
     G_MODE --> G_SCAN[Pindai satu atau beberapa QR unit fisik ke dalam daftar batch]
     G_SCAN --> G_VALID_ITEMS{Daftar batch memiliki item?}
     G_VALID_ITEMS -->|Tidak| G_SCAN_WAIT[Tunggu pemindaian barang]
@@ -1223,29 +1280,39 @@ flowchart TD
     G_CHECK_MODE -->|MOVE| G_VAL_MOVE[Pilih penerima/teknisi, isi nomor SPT, dan lokasi tujuan]
     G_CHECK_MODE -->|DAMAGE / DISMANTLE / FOUND| G_VAL_OTH[Isi lokasi barang dan catatan kondisi fisik]
 
-    G_VAL_UPD --> G_DOC_OPT{Perlu cetak Surat Jalan atau Berita Acara?}
+    G_VAL_UPD --> G_DOC_OPT{Pengguna memilih pembuatan dokumen?}
     G_VAL_MOVE --> G_DOC_OPT
     G_VAL_OTH --> G_DOC_OPT
     
-    G_DOC_OPT -->|Ya| G_FILL_DOC[Centang opsi dokumen & lengkapi data penanggung jawab site]
+    G_DOC_OPT -->|Ya| G_FILL_DOC[Centang opsi Surat Jalan / Berita Acara & lengkapi metadata lokasi/site]
     G_DOC_OPT -->|Tidak| G_CONFIRM[Tinjau seluruh baris item pada tabel batch]
     G_FILL_DOC --> G_CONFIRM
     
     G_CONFIRM --> G_SUBMIT[Klik tombol Proses & Simpan]
     G_SUBMIT --> G_EXEC[Panggil helper submitAdminScanBatch]
-    G_EXEC --> G_LOOP_EXEC[Iterasi pemrosesan setiap unit di basis data]
-    G_LOOP_EXEC --> G_WRITE_ITEM[Update status dan lokasi unit pada sparepart_items]
-    G_WRITE_ITEM --> G_WRITE_STOCK[Sesuaikan stok katalog spareparts bila ada relasi katalog]
-    G_WRITE_STOCK --> G_WRITE_TX[Catat transaksi dengan status completed di koleksi transaksi]
-    G_WRITE_TX --> G_WRITE_LOG[Catat audit log ke koleksi aktivitas]
-    G_WRITE_LOG --> G_CHECK_MORE{Masih ada item dalam batch?}
-    G_CHECK_MORE -->|Ya| G_LOOP_EXEC
-    G_CHECK_MORE -->|Tidak| G_GEN_PDF{Opsi dokumen dicentang?}
-    G_GEN_PDF -->|Ya| G_DOWNLOAD_PDF[Generate dan unduh file PDF Surat Jalan / Berita Acara otomatis]
-    G_GEN_PDF -->|Tidak| G_SHOW_RES[Tampilkan modal ringkasan: jumlah item berhasil dan gagal]
+    
+    G_EXEC --> G_LOOP_EXEC[Iterasi pemrosesan setiap item secara terpisah]
+    G_LOOP_EXEC --> G_TRY_PATCH[Perbarui atribut unit pada koleksi sparepart_items]
+    G_TRY_PATCH --> G_CHK_PATCH{Pembaruan unit berhasil?}
+    G_CHK_PATCH -->|Gagal| G_LOG_FAIL[Catat kegagalan item pada batch result]
+    G_CHK_PATCH -->|Berhasil| G_CREATE_TX[Catat dokumen transaksi baru berstatus completed]
+    G_CREATE_TX --> G_AUDIT_TX[Catat audit log ke koleksi aktivitas]
+    G_AUDIT_TX --> G_LOG_OK[Catat keberhasilan item pada batch result]
+    
+    G_LOG_FAIL --> G_MORE_BATCH
+    G_LOG_OK --> G_MORE_BATCH{Masih ada item berikutnya dalam batch?}
+    G_MORE_BATCH -->|Ya| G_LOOP_EXEC
+    G_MORE_BATCH -->|Tidak| G_GEN_PDF{Pengguna memilih pembuatan dokumen?}
+    G_GEN_PDF -->|Ya| G_DOWNLOAD_PDF[Generate dan unduh file PDF Surat Jalan / Berita Acara]
+    G_GEN_PDF -->|Tidak| G_SHOW_RES[Tampilkan modal ringkasan: jumlah item berhasil dan gagal diproses]
     G_DOWNLOAD_PDF --> G_SHOW_RES
     G_SHOW_RES --> G_END([Selesai])
 ```
+
+> **Catatan Pemrosesan Transaksi Langsung & Dokumen:**
+> - Pemrosesan transaksi langsung pada `submitAdminScanBatch` dilakukan per grup/item secara terpisah (*iterative operations*), bukan satu transaksi commit atomik global. Kegagalan pada satu unit tidak otomatis membatalkan pembaruan unit lain yang telah berhasil diproses.
+> - Mode `UPDATE` pada scanner gudang juga mencatat dokumen pada koleksi `transaksi` berstatus `completed` (dengan jenis tindakan `MOVE` dan catatan keterangan pembaruan status/lokasi).
+> - Dokumen PDF Surat Jalan atau Berita Acara bersifat opsional dan digenerate dari daftar item yang diproses pada batch tersebut. Dokumen fisik serah terima hanya dilakukan apabila alur operasional di lapangan mensyaratkannya.
 
 ### State diagram transaksi
 
