@@ -402,9 +402,9 @@ flowchart TB
     E((3.5 Proses keputusan dan transaksi langsung))
     F((3.6 Sajikan hasil per item))
     U[(D1 users)]
-    I[(D2 inventaris dan lokasi)]
+    I[(D2 spareparts sparepart_items lokasi)]
     TX[(D3 transaksi)]
-    K[(D4 Reservasi item)]
+    K[(D4 item_locks)]
     N((5.0 Notifikasi dan aktivitas))
     CL[Cloudinary]
 
@@ -415,6 +415,7 @@ flowchart TB
     %% 3.1 Identifikasi item dan bukti
     T -->|QR pilihan item dan berkas foto| A
     I -->|Identitas kondisi dan lokasi| A
+    A -->|Detail unit| T
     A -->|Berkas foto| CL
     CL -->|URL foto| A
     A -->|Daftar item dan URL foto| B
@@ -439,7 +440,7 @@ flowchart TB
     I -->|Data unit untuk verifikasi fisik| D
     D -->|Daftar pengajuan pending| G
     G -->|Keputusan persetujuan atau penolakan serta alasan| D
-    D -->|Instruksi keputusan terpilih dan alasan| E
+    D -->|Data pengajuan terpilih keputusan dan alasan| E
 
     %% 3.5 Proses keputusan dan transaksi langsung
     U -->|Profil peran dan status akun pemroses| E
@@ -454,14 +455,14 @@ flowchart TB
     %% 3.6 Sajikan hasil per item dan peristiwa luar
     F -->|Ringkasan hasil pengajuan per item| T
     F -->|Ringkasan hasil pemrosesan per item| G
-    F -->|Aliran peristiwa transaksi keluar dari proses 3.0| N
+    F -->|Peristiwa mutasi dan verifikasi transaksi| N
 ```
 
 > **Catatan Aliran Data DFD Level 1:**
 > - **Aliran Transaksi Langsung:** Admin Gudang memasukkan transaksi langsung ke proses `3.2 Validasi data transaksi`. Setelah divalidasi, aliran langsung menuju `3.5 Proses keputusan dan transaksi langsung` (mencatat transaksi `completed` dan memperbarui unit/katalog) tanpa melalui penyimpanan status `pending` pada proses `3.3`.
 > - **Penyimpanan D4 Reservasi Item:** Berfokus pada pencegahan pengajuan ganda (`item_locks`). Keranjang belanja dikelola pada memori antarmuka (*client state*) dan dialirkan sebagai daftar item dari `3.1` ke `3.2` tanpa dicatat permanen ke basis data sebelum transaksi diajukan.
-> - **Proses Eksternal 5.0:** `5.0 Notifikasi dan aktivitas` digambarkan sebagai proses penghubung luar lingkup proses 3.0 untuk mencatat riwayat audit log dan mengirim pemberitahuan sistem (selaras dengan DFD Level 0).
-> - **Hasil Per Item:** Keluaran proses 3.6 disajikan sebagai ringkasan hasil per item ke Teknisi dan Admin Gudang, menegaskan pemrosesan per item/transaksi Firestore (bukan commit tunggal semua item).
+> - **Proses Penghubung di Luar Lingkup 3.0:** Proses `1.0 Identitas dan akses` serta `5.0 Notifikasi dan aktivitas` tetap merupakan proses internal sistem, tetapi berada di luar lingkup perincian proses 3.0. Proses 1.0 menyediakan identitas sesi terautentikasi, sedangkan proses 5.0 menerima peristiwa transaksi untuk kebutuhan notifikasi dan pencatatan aktivitas.
+> - **Hasil Per Item:** Proses 3.6 menyajikan ringkasan hasil pengajuan dan pemrosesan per item. Pemrosesan atomik per item melalui transaksi Firestore, serta kemungkinan keberhasilan sebagian item, merupakan karakteristik implementasi yang perlu didukung oleh kode aplikasi, bukan dibuktikan oleh DFD saja.
 
 ## 9. ERD dan kamus data
 
