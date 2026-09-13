@@ -274,22 +274,27 @@ Pada jalur pengajuan teknisi, transaksi yang berhasil dikirim terlebih dahulu be
 
 ## 6. Diagram konteks
 
-Sistem digambarkan sebagai satu proses. Firebase Authentication dan Cloudinary ditampilkan sebagai layanan eksternal pendukung.
+Sistem digambarkan sebagai satu proses utama dengan empat entitas pengguna serta layanan eksternal pendukung (Firebase Authentication dan Cloudinary).
 
 ```mermaid
 flowchart LR
-    ADM[Admin Sistem] -->|Data akun dan perubahan akses| SYS((Sistem Inventaris Telkomsat))
-    SYS -->|Hasil pengelolaan akun dan aktivitas| ADM
-    GD[Admin Gudang] -->|Master barang lokasi dan keputusan| SYS
-    SYS -->|Pengajuan stok dan dokumen| GD
-    TK[Teknisi] -->|Identitas scan dan pengajuan| SYS
-    SYS -->|Detail barang status dan riwayat sendiri| TK
-    SP[Supervisor] -->|Permintaan pemantauan dan filter| SYS
-    SYS -->|Dashboard laporan dan aktivitas| SP
-    SYS -->|Permintaan autentikasi dan sesi| FA[Firebase Authentication]
-    FA -->|Token atau hasil verifikasi| SYS
-    SYS -->|Gambar untuk disimpan| CL[Cloudinary]
-    CL -->|URL dan hasil pengelolaan gambar| SYS
+    ADM[Admin Sistem] -->|Data akun dan perubahan hak akses| SYS((Sistem Inventaris Telkomsat))
+    SYS -->|Hasil pengelolaan akun dan aktivitas sistem| ADM
+
+    GD[Admin Gudang] -->|Data inventaris dan lokasi transaksi langsung keputusan verifikasi serta permintaan informasi| SYS
+    SYS -->|Informasi inventaris pengajuan hasil transaksi laporan dan notifikasi| GD
+
+    TK[Teknisi] -->|Kredensial scan QR pengajuan mutasi dan permintaan riwayat| SYS
+    SYS -->|Hasil autentikasi detail unit riwayat transaksi sendiri dan notifikasi| TK
+
+    SP[Supervisor] -->|Kredensial filter pemantauan dan permintaan laporan| SYS
+    SYS -->|Hasil autentikasi ringkasan dashboard laporan inventaris dan log aktivitas| SP
+
+    SYS -->|Kredensial dan permintaan verifikasi sesi| FA[Firebase Authentication]
+    FA -->|Token autentikasi dan status verifikasi| SYS
+
+    SYS -->|Berkas foto dokumentasi unit| CL[Cloudinary]
+    CL -->|URL foto tersimpan| SYS
 ```
 
 ## 7. DFD level 0
@@ -298,51 +303,86 @@ Konvensi dokumentasi ini: konteks adalah satu proses, DFD level 0 adalah proses 
 
 ```mermaid
 flowchart TB
-    U[Pengguna terdaftar]
-    G[Admin Gudang]
+    ADM[Admin Sistem]
+    GD[Admin Gudang]
+    TK[Teknisi]
+    SP[Supervisor]
+
     P1((1.0 Identitas dan akses))
     P2((2.0 Master inventaris))
     P3((3.0 Transaksi dan verifikasi))
     P4((4.0 Laporan dan pemantauan))
     P5((5.0 Notifikasi dan aktivitas))
+
     D1[(D1 users)]
     D2[(D2 spareparts sparepart_items lokasi)]
     D3[(D3 transaksi)]
-    D4[(D4 item_locks dan data keranjang)]
+    D4[(D4 item_locks)]
     D5[(D5 notifications aktivitas)]
+
     FA[Firebase Authentication]
     CL[Cloudinary]
-    U -->|Kredensial atau perubahan akun| P1
-    P1 <-->|Profil dan role| D1
-    P1 <-->|Token sesi dan hasil autentikasi| FA
-    P1 -->|Hasil autentikasi dan akses| U
-    G -->|Data master| P2
-    P2 <-->|Data barang dan lokasi| D2
-    P2 <-->|Gambar dan URL| CL
-    P2 -->|Detail master| G
-    U -->|Item tujuan SPT dan bukti| P3
-    G -->|Persetujuan atau penolakan| P3
-    D1 -->|Identitas dan role| P3
-    P3 <-->|Detail dan pembaruan item stok| D2
-    P3 <-->|Pengajuan dan hasil keputusan| D3
-    P3 <-->|Keranjang dan reservasi| D4
-    P3 <-->|Bukti foto dan URL| CL
-    P3 -->|Hasil pengajuan| U
-    P3 -->|Daftar pending dan hasil verifikasi| G
-    U -->|Filter sesuai hak akses| P4
-    D2 -->|Inventaris| P4
-    D3 -->|Riwayat transaksi| P4
-    D5 -->|Aktivitas| P4
-    P4 -->|Dashboard riwayat dan dokumen| U
-    P1 -->|Aksi akun yang dicatat| P5
-    P2 -->|Aksi master yang dicatat| P5
-    P3 -->|Peristiwa transaksi| P5
-    P5 <-->|Catatan dan status baca| D5
-    U -->|Permintaan notifikasi dan tandai dibaca| P5
-    P5 -->|Notifikasi| U
-```
 
-`D4` mengelompokkan state keranjang klien/koleksi sesi dan reservasi Firestore secara konseptual. Tidak setiap perubahan keranjang otomatis dikirim ke Firestore.
+    %% 1.0 Identitas dan akses
+    ADM -->|Pengelolaan data dan hak akses akun| P1
+    GD -->|Kredensial login| P1
+    TK -->|Kredensial login| P1
+    SP -->|Kredensial login| P1
+    P1 -->|Kredensial dan permintaan sesi| FA
+    FA -->|Token autentikasi dan status sesi| P1
+    D1 -->|Profil hak akses dan status akun| P1
+    P1 -->|Pembaruan data akun| D1
+    P1 -->|Hasil autentikasi dan akses menu| ADM
+    P1 -->|Hasil autentikasi dan status sesi| GD
+    P1 -->|Hasil autentikasi dan status sesi| TK
+    P1 -->|Hasil autentikasi dan status sesi| SP
+
+    %% 2.0 Master inventaris
+    GD -->|Data katalog unit fisik dan lokasi| P2
+    P2 -->|Berkas foto unit| CL
+    CL -->|URL foto tersimpan| P2
+    D2 -->|Data inventaris dan lokasi| P2
+    P2 -->|Pencatatan dan pembaruan data barang| D2
+    P2 -->|Detail informasi inventaris| GD
+
+    %% 3.0 Transaksi dan verifikasi
+    TK -->|Pengajuan mutasi bukti foto SPT dan tujuan| P3
+    GD -->|Transaksi langsung dan keputusan verifikasi| P3
+    P1 -->|Identitas sesi terautentikasi| P3
+    D1 -->|Profil peran dan status akun| P3
+    D2 -->|Data unit terkini dan stok katalog| P3
+    P3 -->|Pembaruan status lokasi unit dan stok| D2
+    D3 -->|Data transaksi terkini| P3
+    P3 -->|Pencatatan pengajuan dan hasil transaksi| D3
+    D4 -->|Status reservasi item| P3
+    P3 -->|Pencatatan dan pelepasan reservasi| D4
+    P3 -->|Berkas foto bukti transaksi| CL
+    CL -->|URL foto bukti| P3
+    P3 -->|Ringkasan hasil pengajuan per item| TK
+    P3 -->|Hasil pemrosesan transaksi dan daftar pending| GD
+
+    %% 4.0 Laporan dan pemantauan
+    SP -->|Parameter filter dan periode laporan| P4
+    GD -->|Permintaan laporan mutasi dan stok| P4
+    D2 -->|Data inventaris terkini| P4
+    D3 -->|Riwayat transaksi| P4
+    D5 -->|Log aktivitas sistem| P4
+    P4 -->|Laporan inventaris dan mutasi| GD
+    P4 -->|Dashboard analitik dan laporan komprehensif| SP
+
+    %% 5.0 Notifikasi dan aktivitas
+    P1 -->|Aksi autentikasi dan akun| P5
+    P2 -->|Aksi master inventaris| P5
+    P3 -->|Peristiwa mutasi dan verifikasi transaksi| P5
+    D5 -->|Daftar notifikasi dan log aktivitas| P5
+    P5 -->|Pencatatan notifikasi dan log aktivitas| D5
+    TK -->|Permintaan notifikasi dan tanda baca| P5
+    GD -->|Permintaan notifikasi dan tanda baca| P5
+    ADM -->|Pemantauan riwayat log aktivitas| P5
+    P5 -->|Notifikasi transaksi| TK
+    P5 -->|Notifikasi pengajuan dan transaksi| GD
+    P5 -->|Daftar log aktivitas sistem| ADM
+```
 
 ## 8. DFD level 1
 
@@ -375,7 +415,7 @@ flowchart TB
     %% 3.2 Validasi data transaksi
     T -->|Jenis transaksi penerima SPT tujuan dan keterangan| B
     G -->|Data transaksi langsung| B
-    U -->|Identitas dan role dari sesi terautentikasi| B
+    U -->|Profil peran dan status akun pengaju| B
     B -->|Kesalahan validasi| T
     B -->|Kesalahan validasi| G
     B -->|Pengajuan Teknisi tervalidasi| C
@@ -391,21 +431,23 @@ flowchart TB
     TX -->|Data pengajuan pending| D
     I -->|Data unit untuk verifikasi fisik| D
     D -->|Daftar pengajuan pending| G
-    G -->|Keputusan persetujuan atau penolakan| D
-    D -->|Instruksi keputusan terpilih| E
+    G -->|Keputusan persetujuan atau penolakan serta alasan| D
+    D -->|Instruksi keputusan terpilih dan alasan| E
 
     %% 3.5 Proses keputusan dan transaksi langsung
-    U -->|Identitas verifikator dari sesi| E
-    TX -->|Status transaksi terkini| E
-    E -->|Pembaruan status completed atau rejected| TX
-    E -->|Pembaruan status kondisi dan lokasi unit serta stok katalog| I
-    E -->|Pelepasan dokumen reservasi pending| K
+    U -->|Profil peran dan status akun pemroses| E
+    I -->|Data inventaris terkini| E
+    K -->|Status dan pemilik reservasi| E
+    TX -->|Data dan status transaksi terkini| E
+    E -->|Pencatatan transaksi langsung atau pembaruan hasil keputusan| TX
+    E -->|Perubahan inventaris sesuai transaksi yang diproses| I
+    E -->|Pelepasan reservasi terkait pengajuan| K
     E -->|Rincian hasil eksekusi transaksi| F
 
     %% 3.6 Sajikan hasil per item dan peristiwa luar
     F -->|Ringkasan hasil pengajuan per item| T
     F -->|Ringkasan hasil pemrosesan per item| G
-    F -.->|Aliran peristiwa transaksi keluar dari proses 3.0| N
+    F -->|Aliran peristiwa transaksi keluar dari proses 3.0| N
 ```
 
 > **Catatan Aliran Data DFD Level 1:**
