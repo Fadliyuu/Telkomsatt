@@ -346,52 +346,73 @@ flowchart TB
 
 ## 8. DFD level 1
 
-Rincian **proses 3.0: transaksi dan verifikasi**, khususnya pengajuan teknisi. Data masuk/keluar mengacu pada aktor dan penyimpanan level 0.
+Rincian **proses 3.0: transaksi dan verifikasi**, memodelkan pemrosesan per item untuk pengajuan teknisi maupun transaksi langsung Admin Gudang. Aliran masuk/keluar mengacu pada entitas luar dan penyimpanan data yang selaras dengan DFD level 0.
 
 ```mermaid
 flowchart TB
     T[Teknisi]
     G[Admin Gudang]
-    A((3.1 Identifikasi item dan keranjang))
-    B((3.2 Validasi identitas SPT dan tujuan))
-    C((3.3 Simpan pending dan reservasi))
-    D((3.4 Ambil pengajuan dan keputusan))
-    E((3.5 Terapkan keputusan gudang))
-    F((3.6 Sajikan hasil dan peristiwa))
+    A((3.1 Identifikasi item dan bukti))
+    B((3.2 Validasi data transaksi))
+    C((3.3 Simpan pengajuan dan reservasi))
+    D((3.4 Ambil antrean pengajuan))
+    E((3.5 Proses keputusan dan transaksi langsung))
+    F((3.6 Sajikan hasil per item))
     U[(D1 users)]
     I[(D2 inventaris dan lokasi)]
     TX[(D3 transaksi)]
-    K[(D4 keranjang dan item_locks)]
+    K[(D4 Reservasi item)]
     N((5.0 Notifikasi dan aktivitas))
     CL[Cloudinary]
-    T -->|QR pilihan item dan bukti| A
+
+    %% 3.1 Identifikasi item dan bukti
+    T -->|QR dan pilihan item| A
     I -->|Identitas kondisi dan lokasi| A
-    A <-->|Foto dan URL| CL
-    A <-->|Isi keranjang| K
-    A -->|Daftar item| B
-    T -->|Tujuan SPT keterangan| B
-    U -->|UID role dan status| B
+    A -->|Berkas foto| CL
+    CL -->|URL foto| A
+    A -->|Daftar item dan URL foto| B
+
+    %% 3.2 Validasi data transaksi
+    T -->|Jenis transaksi penerima SPT tujuan dan keterangan| B
+    G -->|Data transaksi langsung| B
+    U -->|Identitas dan role dari sesi terautentikasi| B
     B -->|Kesalahan validasi| T
-    B -->|Pengajuan valid| C
-    K -->|Status reservasi| C
-    C -->|Pengajuan pending| TX
-    C -->|Reservasi item| K
-    C -->|Ringkasan pengajuan| F
-    TX -->|Pending| D
-    I -->|Barang untuk pemeriksaan| D
-    D -->|Daftar pengajuan| G
-    G -->|Keputusan dan alasan| D
-    D -->|Keputusan terpilih| E
-    U -->|Identitas verifikator| E
-    TX -->|Status terakhir| E
-    E -->|Completed atau rejected| TX
-    E -->|Perubahan item stok bila disetujui| I
-    E -->|Pelepasan reservasi| K
-    E -->|Hasil keputusan| F
-    F -->|Status transaksi| T
-    F -->|Hasil verifikasi| G
-    F -->|Peristiwa pemberitahuan dan audit| N
+    B -->|Kesalahan validasi| G
+    B -->|Pengajuan Teknisi tervalidasi| C
+    B -->|Transaksi langsung tervalidasi| E
+
+    %% 3.3 Simpan pengajuan dan reservasi (Khusus Pengajuan Teknisi)
+    K -->|Pemeriksaan status reservasi aktif| C
+    C -->|Pencatatan transaksi pending| TX
+    C -->|Kunci dokumen reservasi pending| K
+    C -->|Ringkasan hasil pengajuan per item| F
+
+    %% 3.4 Ambil antrean pengajuan (Review Gudang)
+    TX -->|Data pengajuan pending| D
+    I -->|Data unit untuk verifikasi fisik| D
+    D -->|Daftar pengajuan pending| G
+    G -->|Keputusan persetujuan atau penolakan| D
+    D -->|Instruksi keputusan terpilih| E
+
+    %% 3.5 Proses keputusan dan transaksi langsung
+    U -->|Identitas verifikator dari sesi| E
+    TX -->|Status transaksi terkini| E
+    E -->|Pembaruan status completed atau rejected| TX
+    E -->|Pembaruan status kondisi dan lokasi unit serta stok katalog| I
+    E -->|Pelepasan dokumen reservasi pending| K
+    E -->|Rincian hasil eksekusi transaksi| F
+
+    %% 3.6 Sajikan hasil per item dan peristiwa luar
+    F -->|Ringkasan hasil pengajuan per item| T
+    F -->|Ringkasan hasil pemrosesan per item| G
+    F -.->|Aliran peristiwa transaksi keluar dari proses 3.0| N
 ```
+
+> **Catatan Aliran Data DFD Level 1:**
+> - **Aliran Transaksi Langsung:** Admin Gudang memasukkan transaksi langsung ke proses `3.2 Validasi data transaksi`. Setelah divalidasi, aliran langsung menuju `3.5 Proses keputusan dan transaksi langsung` (mencatat transaksi `completed` dan memperbarui unit/katalog) tanpa melalui penyimpanan status `pending` pada proses `3.3`.
+> - **Penyimpanan D4 Reservasi Item:** Berfokus pada pencegahan pengajuan ganda (`item_locks`). Keranjang belanja dikelola pada memori antarmuka (*client state*) dan dialirkan sebagai daftar item dari `3.1` ke `3.2` tanpa dicatat permanen ke basis data sebelum transaksi diajukan.
+> - **Proses Eksternal 5.0:** `5.0 Notifikasi dan aktivitas` digambarkan sebagai proses penghubung luar lingkup proses 3.0 untuk mencatat riwayat audit log dan mengirim pemberitahuan sistem (selaras dengan DFD Level 0).
+> - **Hasil Per Item:** Keluaran proses 3.6 disajikan sebagai ringkasan hasil per item ke Teknisi dan Admin Gudang, menegaskan pemrosesan per item/transaksi Firestore (bukan commit tunggal semua item).
 
 ## 9. ERD dan kamus data
 
