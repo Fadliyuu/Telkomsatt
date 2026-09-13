@@ -746,7 +746,7 @@ sequenceDiagram
 
 Diagram aktivitas (Activity Diagram) memodelkan alur kerja sistem operasional (*workflow*) menggunakan partisi (*swimlanes*) yang memisahkan tanggung jawab antara pengguna/aktor, antarmuka sistem (Web & Android), dan basis data Firestore beserta layanan pendukungnya.
 
-> **Catatan Notasi:** Diagram menggunakan sintaks `flowchart TD` dengan pengelompokan `subgraph` untuk memvisualisasikan partisi tanggung jawab (*activity partitions / swimlanes*) secara terstruktur dan terbaca langsung pada repositori.
+> **Catatan Notasi:** Diagram menggunakan sintaks `flowchart TD` dengan pengelompokan `subgraph` untuk memvisualisasikan partisi tanggung jawab (*activity partitions / swimlanes*) secara terstruktur dan terbaca langsung pada repositori. Garis penuh (`-->`) menunjukkan urutan alur kegiatan antartindakan, sedangkan garis putus-putus (`-.->`) menunjukkan hubungan penulisan atau penyimpanan data ke basis data.
 
 ### A. Activity diagram alur sistem (Project Overview)
 
@@ -842,10 +842,10 @@ flowchart TD
     subgraph DB["Firestore Database"]
         S_LOCK_CHK --> D_LOCK[(Koleksi item_locks)]
         D_LOCK --> S_IS_LOCKED
-        S_CREATE_TX --> D_TX[(Koleksi transaksi & item_locks)]
-        S_REJECT --> D_TX
-        S_APPROVE --> D_ITEMS[(Koleksi sparepart_items & spareparts)]
-        S_APPROVE --> D_TX
+        S_CREATE_TX -.-> D_TX[(Koleksi transaksi & item_locks)]
+        S_REJECT -.-> D_TX
+        S_APPROVE -.-> D_ITEMS[(Koleksi sparepart_items & spareparts)]
+        S_APPROVE -.-> D_TX
     end
 
     subgraph ADM["Admin Gudang"]
@@ -901,13 +901,13 @@ flowchart TD
     end
 
     subgraph DB["Firestore Database"]
-        S_DB_WRITE --> D_ITEMS[(sparepart_items: pembaruan status dan lokasi)]
-        S_DB_WRITE --> D_SP[(spareparts: penyesuaian stok sesuai aturan mutasi)]
-        S_DB_WRITE --> D_TX[(transaksi: pencatatan transaksi berstatus completed)]
-        S_AUDIT --> D_LOG[(aktivitas: pencatatan audit log)]
+        S_DB_WRITE -.-> D_ITEMS[(sparepart_items: pembaruan status dan lokasi)]
+        S_DB_WRITE -.-> D_SP[(spareparts: penyesuaian stok sesuai aturan mutasi)]
+        S_DB_WRITE -.-> D_TX[(transaksi: pencatatan transaksi berstatus completed)]
+        S_AUDIT -.-> D_LOG[(aktivitas: pencatatan audit log)]
     end
 
-    subgraph REC["Penerima (Teknisi / Site)"]
+    subgraph REC["Pihak Serah Terima (Teknisi / Perwakilan Site)"]
         A_HANDOVER --> R_RECV[Periksa barang dan tandatangani dokumen apabila diperlukan]
         R_RECV --> END_PROC
     end
