@@ -42,20 +42,20 @@ Dokumentasi ini mengikuti implementasi dalam repository. Diagram menjelaskan str
 6. [Diagram konteks](#6-diagram-konteks)
 7. [DFD level 0](#7-dfd-level-0)
 8. [DFD level 1](#8-dfd-level-1)
-9. [ERD dan kamus data](#9-erd-dan-kamus-data)
-10. [UML use case](#10-uml-use-case)
-11. [UML class diagram](#11-uml-class-diagram)
-12. [UML sequence diagram](#12-uml-sequence-diagram)
-13. [Flowchart dan state diagram](#13-flowchart-dan-state-diagram)
-13. [UML activity diagram, flowchart, dan state diagram](#13-uml-activity-diagram-flowchart-dan-state-diagram)
-14. [Struktur proyek, halaman, dan API](#14-struktur-proyek-halaman-dan-api)
-15. [Instalasi dan konfigurasi](#15-instalasi-dan-konfigurasi)
-16. [Panduan pengguna](#16-panduan-pengguna)
-17. [Deployment GitHub dan Netlify](#17-deployment-github-dan-netlify)
-18. [Build Android](#18-build-android)
-19. [Pengujian dan pemeliharaan](#19-pengujian-dan-pemeliharaan)
-20. [Troubleshooting](#20-troubleshooting)
-21. [Batasan dan referensi source](#21-batasan-dan-referensi-source)
+9. [HIPO chart](#9-hipo-chart)
+10. [ERD dan kamus data](#10-erd-dan-kamus-data)
+11. [UML use case](#11-uml-use-case)
+12. [UML class diagram](#12-uml-class-diagram)
+13. [UML sequence diagram](#13-uml-sequence-diagram)
+14. [UML activity diagram, flowchart, dan state diagram](#14-uml-activity-diagram-flowchart-dan-state-diagram)
+15. [Struktur proyek, halaman, dan API](#15-struktur-proyek-halaman-dan-api)
+16. [Instalasi dan konfigurasi](#16-instalasi-dan-konfigurasi)
+17. [Panduan pengguna](#17-panduan-pengguna)
+18. [Deployment GitHub dan Netlify](#18-deployment-github-dan-netlify)
+19. [Build Android](#19-build-android)
+20. [Pengujian dan pemeliharaan](#20-pengujian-dan-pemeliharaan)
+21. [Troubleshooting](#21-troubleshooting)
+22. [Batasan dan referensi source](#22-batasan-dan-referensi-source)
 
 Diagram menggunakan Mermaid dan dapat ditampilkan langsung di GitHub. Preview pada editor lokal membutuhkan dukungan Mermaid.
 
@@ -464,7 +464,95 @@ flowchart TB
 > - **Proses Penghubung di Luar Lingkup 3.0:** Proses `1.0 Identitas dan akses` serta `5.0 Notifikasi dan aktivitas` tetap merupakan proses internal sistem, tetapi berada di luar lingkup perincian proses 3.0. Proses 1.0 menyediakan identitas sesi terautentikasi, sedangkan proses 5.0 menerima peristiwa transaksi untuk kebutuhan notifikasi dan pencatatan aktivitas.
 > - **Hasil Per Item:** Proses 3.6 menyajikan ringkasan hasil pengajuan dan pemrosesan per item. Pemrosesan atomik per item melalui transaksi Firestore, serta kemungkinan keberhasilan sebagian item, merupakan karakteristik implementasi yang perlu didukung oleh kode aplikasi, bukan dibuktikan oleh DFD saja.
 
-## 9. ERD dan kamus data
+## 9. HIPO chart
+
+HIPO (*Hierarchy plus Input-Process-Output*) memetakan struktur hierarki modul fungsional sistem secara terstruktur dari tingkat atas (*Visual Table of Contents / VTOC*) hingga rincian proses (*Input-Process-Output / IPO Diagram*).
+
+### A. Visual Table of Contents (VTOC)
+
+Diagram hierarki fungsi modul sistem membagi seluruh kemampuan aplikasi ke dalam modul-modul utama yang selaras dengan proses bisnis dan perancangan DFD:
+
+```mermaid
+flowchart TD
+    ROOT["0.0 Sistem Inventaris Sparepart Telkomsat"]
+
+    %% Modul Tingkat 1
+    M1["1.0 Modul Identitas & Akses"]
+    M2["2.0 Modul Master Inventaris"]
+    M3["3.0 Modul Transaksi & Verifikasi"]
+    M4["4.0 Modul Laporan & Pemantauan"]
+    M5["5.0 Modul Notifikasi & Log Aktivitas"]
+
+    ROOT --> M1
+    ROOT --> M2
+    ROOT --> M3
+    ROOT --> M4
+    ROOT --> M5
+
+    %% Sub-modul 1.0
+    M1_1["1.1 Autentikasi Pengguna"]
+    M1_2["1.2 Manajemen Sesi Cookie"]
+    M1_3["1.3 Pengelolaan Akun & Hak Akses"]
+    M1 --> M1_1
+    M1 --> M1_2
+    M1 --> M1_3
+
+    %% Sub-modul 2.0
+    M2_1["2.1 Kelola Katalog Sparepart"]
+    M2_2["2.2 Kelola Unit Fisik & Lokasi"]
+    M2_3["2.3 Pembuatan & Pencetakan QR Code"]
+    M2_4["2.4 Impor Data Excel & OCR"]
+    M2 --> M2_1
+    M2 --> M2_2
+    M2 --> M2_3
+    M2 --> M2_4
+
+    %% Sub-modul 3.0
+    M3_1["3.1 Identifikasi QR & Bukti Fisik"]
+    M3_2["3.2 Validasi Data Transaksi"]
+    M3_3["3.3 Pengajuan & Reservasi Pending"]
+    M3_4["3.4 Verifikasi & Keputusan Gudang"]
+    M3_5["3.5 Pemrosesan Transaksi Langsung"]
+    M3_6["3.6 Pengunduhan Surat Jalan & BA"]
+    M3 --> M3_1
+    M3 --> M3_2
+    M3 --> M3_3
+    M3 --> M3_4
+    M3 --> M3_5
+    M3 --> M3_6
+
+    %% Sub-modul 4.0
+    M4_1["4.1 Dashboard Analitik per Role"]
+    M4_2["4.2 Laporan Mutasi & Stok Inventaris"]
+    M4_3["4.3 Riwayat Transaksi Teknisi"]
+    M4_4["4.4 Ekspor Dokumen Laporan PDF/Excel"]
+    M4 --> M4_1
+    M4 --> M4_2
+    M4 --> M4_3
+    M4 --> M4_4
+
+    %% Sub-modul 5.0
+    M5_1["5.1 Pembuatan Notifikasi Transaksi"]
+    M5_2["5.2 Penandaan Status Baca Notifikasi"]
+    M5_3["5.3 Pencatatan Audit Log Aktivitas"]
+    M5 --> M5_1
+    M5 --> M5_2
+    M5 --> M5_3
+```
+
+### B. Tabel Input-Process-Output (IPO)
+
+Tabel berikut merangkum hubungan masukan (*Input*), tahapan pemrosesan (*Process*), dan keluaran (*Output*) untuk setiap modul utama pada sistem:
+
+| Kode Modul | Nama Modul | Masukan (*Input*) | Pemrosesan (*Process*) | Keluaran (*Output*) |
+|---|---|---|---|---|
+| **1.0** | **Identitas & Akses** | Email, password, ID Token Firebase, data profil akun pengguna baru/edit. | 1. Verifikasi kredensial via Firebase Authentication.<br>2. Pembuatan dan validasi session cookie server (`__session`).<br>3. Pemetaan *Role-Based Access Control* (RBAC) dan otorisasi menu. | Status autentikasi, cookie sesi, profil pengguna, dan hak akses antarmuka. |
+| **2.0** | **Master Inventaris** | Nama perangkat, serial number (SN), tagging, kategori, lokasi default/saat ini, foto unit fisik, file Excel inventaris, gambar label/tabel fisik. | 1. Validasi keunikan dan format SN/tagging.<br>2. Pengunggahan gambar fisik ke Cloudinary.<br>3. Pembuatan URL identifikasi QR unit (`/scan/<id>`).<br>4. Ekstraksi data tabel gambar via mesin OCR (Tesseract) dan parser Excel (SheetJS).<br>5. Penyimpanan dokumen ke Firestore `spareparts` dan `sparepart_items`. | Dokumen katalog, data unit fisik terdaftar, label QR Code (PNG/cetak), hasil preview & rekap impor. |
+| **3.0** | **Transaksi & Verifikasi** | Hasil scan QR unit, pilihan tindakan (`MOVE`, `DAMAGE`, dll.), foto bukti fisik, nomor SPT, lokasi tujuan, identitas penerima, batch scan gudang, keputusan verifikasi (setuju/tolak) beserta alasan. | 1. Resolusi identitas unit dan pengecekan reservasi pending (`item_locks`).<br>2. Pengunggahan bukti foto kerusakan/mutasi ke Cloudinary.<br>3. Validasi kelengkapan form (wajib SPT untuk OUT/MOVE).<br>4. Pencatatan transaksi `pending` dan penguncian unit atomik via Firestore Transaction.<br>5. Eksekusi keputusan verifikasi Admin Gudang: pembaruan status unit, penyesuaian stok katalog, pembaruan status transaksi (`completed`/`rejected`), dan pelepasan kunci reservasi.<br>6. Pemrosesan transaksi langsung Admin Gudang batch (`submitAdminScanBatch`).<br>7. Pembuatan dokumen PDF Surat Jalan dan Berita Acara (BA). | Transaksi tercatat (`pending`/`completed`/`rejected`), pembaruan lokasi dan kondisi unit fisik, penyesuaian stok gudang/total, dokumen PDF Surat Jalan dan Berita Acara. |
+| **4.0** | **Laporan & Pemantauan** | Parameter filter tanggal, jenis transaksi, teknisi, lokasi, status barang, pilihan format ekspor (PDF/Excel). | 1. Pengambilan riwayat transaksi terindeks dan data unit fisik.<br>2. Scoping keamanan data riwayat berdasarkan `requestedByUid` untuk akun Teknisi.<br>3. Agregasi ringkasan data inventaris dan statistik mutasi untuk dashboard.<br>4. Pembentukan tabel dokumen laporan PDF dengan layout kop/logo Telkomsat resmi dan workbook Excel. | Tampilan dashboard analitik sesuai role, tabel data transaksi tersaring, berkas unduhan laporan mutasi inventaris (PDF/Excel). |
+| **5.0** | **Notifikasi & Log Aktivitas** | Pemicu peristiwa transaksi baru, perubahan status verifikasi, penandaan baca notifikasi, metadata aksi sistem (aktor, tipe aksi, target, waktu). | 1. Pembuatan dokumen notifikasi ke koleksi `notifications` bagi pihak terkait.<br>2. Pembaruan flag baca notifikasi per pengguna.<br>3. Pencatatan jejak audit sistem ke koleksi `aktivitas` melalui helper audit (*best effort*). | Daftar notifikasi transaksi pengguna, pembaruan badge notifikasi belum dibaca, daftar rekam jejak audit log aktivitas sistem. |
+
+## 10. ERD dan kamus data
 
 Firestore adalah database dokumen. ERD menunjukkan **relasi logis**; FK bukan foreign key SQL yang otomatis ditegakkan database. ID dokumen ditampilkan sebagai `id` agar mudah dibaca.
 
@@ -596,7 +684,7 @@ erDiagram
 | `session_keranjang_item` | Item draft keranjang (opsional) | `SessionKeranjangItem` |
 | `teknisi_guest` | Koleksi legacy | Ditolak rules saat ini |
 
-## 10. UML use case
+## 11. UML use case
 
 Mermaid tidak menyediakan sintaks use case UML khusus. Diagram ini memakai flowchart dengan oval sebagai representasi use case dan aktor di luar batas sistem.
 
@@ -651,7 +739,7 @@ flowchart LR
 | Verifikasi | Admin Gudang dan transaksi pending | Completed/rejected dengan identitas verifikator |
 | Laporan | Role mempunyai akses | Ringkasan/dokumen sesuai filter |
 
-## 11. UML class diagram
+## 12. UML class diagram
 
 Source terutama memakai interface TypeScript dan fungsi. Kotak layanan adalah pengelompokan konseptual fungsi, bukan klaim adanya class OOP dengan nama tersebut pada source.
 
@@ -721,7 +809,7 @@ classDiagram
     TransactionService ..> SparepartItem : persetujuan
 ```
 
-## 12. UML sequence diagram
+## 13. UML sequence diagram
 
 ### A. Login dan sesi server
 
@@ -813,7 +901,7 @@ sequenceDiagram
     end
 ```
 
-## 13. UML activity diagram, flowchart, dan state diagram
+## 14. UML activity diagram, flowchart, dan state diagram
 
 Diagram aktivitas (Activity Diagram) memodelkan alur kerja sistem operasional (*workflow*) menggunakan partisi (*swimlanes*) yang memisahkan tanggung jawab antara pengguna/aktor, antarmuka sistem (Web & Android), dan basis data Firestore beserta layanan pendukungnya.
 
@@ -1029,7 +1117,7 @@ stateDiagram-v2
 
 Dokumen pending diperbarui menjadi completed/rejected. Helper verifikasi menolak pemrosesan ulang dokumen final. Pengajuan setelah penolakan merupakan transaksi baru, bukan mengubah rejected kembali ke pending.
 
-## 14. Struktur proyek, halaman, dan API
+## 15. Struktur proyek, halaman, dan API
 
 ```text
 Telkomsatt/
@@ -1090,7 +1178,7 @@ Telkomsatt/
 
 GET `/api/admin/users` tidak menyediakan daftar publik dan ditolak handler. Modul inventaris membaca Firestore melalui helper. Batas upload API adalah 5 MB per gambar, selain validasi format/isi dan batas hosting.
 
-## 15. Instalasi dan konfigurasi
+## 16. Instalasi dan konfigurasi
 
 ### A. Source lokal
 
@@ -1258,7 +1346,7 @@ Jika environment berubah, restart server pengembangan; untuk mode produksi, ulan
 
 Belum ada perintah `npm test` terpadu. Jalankan script regresi dengan `node` seperti pada bagian pengujian. `npm run test:push-item` tercantum di `package.json`, tetapi file `scripts/test-push-item.js` tidak tersedia sehingga perintah itu belum dapat digunakan.
 
-## 16. Panduan pengguna
+## 17. Panduan pengguna
 
 ### Admin Sistem
 
@@ -1401,7 +1489,7 @@ Data lama yang menyimpan `qrCodeUrl` localhost tidak perlu diubah untuk menampil
 
 Generator PDF menggunakan `public/logo/logo.png` beresolusi 1994 × 829 piksel dan mempertahankan proporsi logo di dalam area cetak. Ikon 32 × 32 piksel tidak digunakan untuk PDF. Unduh ulang Berita Acara untuk memperoleh tampilan logo yang diperbaiki.
 
-## 17. Deployment GitHub dan Netlify
+## 18. Deployment GitHub dan Netlify
 
 ```mermaid
 flowchart LR
@@ -1436,7 +1524,7 @@ Build lokal tidak membuktikan konfigurasi Netlify lengkap. `.env.local` tidak ik
 
 Sesudah deploy, cocokkan commit pada Netlify dengan commit yang diinginkan, lalu uji satu siklus menggunakan akun dan data uji: login → baca inventaris → scan/pilih unit → pengajuan → verifikasi → periksa hasil. Uji juga upload dan unduhan dari browser/Android yang digunakan petugas.
 
-## 18. Build Android
+## 19. Build Android
 
 | Pengaturan | Nilai |
 |---|---|
@@ -1465,7 +1553,7 @@ Perubahan web pada URL sama dapat tampil setelah reload. Perubahan native, izin,
 
 Alamat server diatur pada properti `TELKOMSAT_WEB_URL` di [android/gradle.properties](android/gradle.properties). Gunakan origin HTTPS, misalnya `https://tsatspare.netlify.app`, tanpa path, query, atau fragmen. URL bawaan yang terisi menyembunyikan tombol pengaturan server; nilai kosong memungkinkan pengguna mengisi server melalui aplikasi. Setelah mengganti konfigurasi build ini, buat dan instal APK baru.
 
-## 19. Pengujian dan pemeliharaan
+## 20. Pengujian dan pemeliharaan
 
 ```bash
 npm run lint
@@ -1525,7 +1613,7 @@ Pemeliharaan mencakup log Netlify, konsistensi stok/item, akun aktif, rules/inde
 
 Simpan periode, identitas item/transaksi, langkah pemicu, dan pesan error saat melaporkan masalah. Untuk kendala hosting sertakan commit/deploy terkait; hindari menyertakan password, cookie sesi, atau private key.
 
-## 20. Troubleshooting
+## 21. Troubleshooting
 
 | Gejala | Pemeriksaan |
 |---|---|
@@ -1557,7 +1645,7 @@ Simpan periode, identitas item/transaksi, langkah pemicu, dan pesan error saat m
 | Angka dashboard berbeda dari laporan | Samakan periode, filter, tab, sumber data, dan hitungan dokumen dibanding jumlah unit |
 | `npm run test:push-item` gagal menemukan modul | File script yang dirujuk belum tersedia; gunakan pemeriksaan yang terdaftar pada bagian pengujian |
 
-## 21. Batasan dan referensi source
+## 22. Batasan dan referensi source
 
 - Komentar/helper legacy yang menyebut guest tidak mengaktifkan akses tamu pada rules saat ini.
 - Akses UI dan izin Firestore tidak identik. Beberapa rules koleksi lebih luas daripada menu; matriks UI bukan jaminan pembatasan per field.
