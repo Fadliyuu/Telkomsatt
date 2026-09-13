@@ -281,11 +281,11 @@ flowchart LR
     ADM[Admin Sistem] -->|Kredensial data akun perubahan hak akses dan permintaan aktivitas| SYS((Sistem Inventaris Telkomsat))
     SYS -->|Hasil autentikasi pengelolaan akun dan informasi aktivitas| ADM
 
-    GD[Admin Gudang] -->|Kredensial data inventaris dan lokasi transaksi langsung keputusan verifikasi serta permintaan informasi dan notifikasi| SYS
+    GD[Admin Gudang] -->|Kredensial data inventaris dan lokasi transaksi langsung keputusan verifikasi serta permintaan informasi dan notifikasi dan penandaan notifikasi dibaca| SYS
     SYS -->|Hasil autentikasi informasi inventaris pengajuan hasil transaksi laporan dan notifikasi| GD
 
     TK[Teknisi] -->|Kredensial berkas foto scan QR pengajuan mutasi permintaan riwayat permintaan notifikasi dan penandaan notifikasi dibaca| SYS
-    SYS -->|Hasil autentikasi detail unit riwayat transaksi sendiri dan notifikasi| TK
+    SYS -->|Hasil autentikasi detail unit hasil pengajuan riwayat transaksi sendiri dan notifikasi| TK
 
     SP[Supervisor] -->|Kredensial filter pemantauan dan permintaan laporan| SYS
     SYS -->|Hasil autentikasi ringkasan dashboard laporan inventaris dan log aktivitas| SP
