@@ -46,7 +46,7 @@ Dokumentasi ini mengikuti implementasi dalam repository. Diagram menjelaskan str
 10. [UML use case](#10-uml-use-case)
 11. [UML class diagram](#11-uml-class-diagram)
 12. [UML sequence diagram](#12-uml-sequence-diagram)
-13. [Flowchart dan state diagram](#13-flowchart-dan-state-diagram)
+13. [UML activity diagram, flowchart, dan state diagram](#13-uml-activity-diagram-flowchart-dan-state-diagram)
 14. [Struktur proyek, halaman, dan API](#14-struktur-proyek-halaman-dan-api)
 15. [Instalasi dan konfigurasi](#15-instalasi-dan-konfigurasi)
 16. [Panduan pengguna](#16-panduan-pengguna)
@@ -741,9 +741,149 @@ sequenceDiagram
     end
 ```
 
-## 13. Flowchart dan state diagram
+## 13. UML activity diagram, flowchart, dan state diagram
 
-### Flowchart teknisi
+Diagram aktivitas (Activity Diagram) memodelkan alur kerja sistem operasional (*workflow*) dengan partisi (*swimlanes*) yang memisahkan tanggung jawab antara pengguna/aktor, antarmuka sistem (Web & Android), dan basis data Firestore beserta layanan pendukungnya.
+
+### A. Activity diagram alur sistem (Project Overview)
+
+Diagram ini menggambarkan alur kerja global seluruh modul aplikasi Telkomsat dari proses autentikasi terpusat hingga pembagian jalur operasional sesuai peran pengguna (*role-based access*).
+
+```mermaid
+flowchart TD
+    subgraph USR["Pengguna (Aktor)"]
+        U_START([Mulai]) --> U_OPEN[Buka aplikasi web atau Android]
+        U_OPEN --> U_LOGIN[Input email dan password]
+        U_DASH[Akses dashboard sesuai hak akses role]
+        
+        %% Percabangan alur per role
+        U_DASH --> T_ACTION[Teknisi: Scan QR item fisik, susun keranjang, kirim pengajuan]
+        U_DASH --> G_ACTION[Admin Gudang: Kelola inventaris, verifikasi pending, transaksi langsung]
+        U_DASH --> S_ACTION[Supervisor: Pantau statistik stok, audit aktivitas, ekspor laporan]
+        U_DASH --> A_ACTION[Admin Sistem: Manajemen akun pengguna & audit hak akses]
+        
+        T_ACTION --> U_LOGOUT[Pengguna melakukan logout]
+        G_ACTION --> U_LOGOUT
+        S_ACTION --> U_LOGOUT
+        A_ACTION --> U_LOGOUT
+        U_LOGOUT --> U_END([Selesai])
+    end
+
+    subgraph SYS["Sistem Aplikasi Telkomsat"]
+        U_LOGIN --> S_AUTH[Proses autentikasi & buat session cookie]
+        S_CHECK{Kredensial valid?}
+        S_CHECK -->|Tidak| S_ERR[Tampilkan pesan kesalahan login]
+        S_ERR --> U_LOGIN
+        S_CHECK -->|Ya| U_DASH
+        U_LOGOUT --> S_CLEAR[Hapus session cookie & reset state autentikasi]
+    end
+
+    subgraph CLD["Firebase & Cloud Services"]
+        S_AUTH --> C_FA[Verifikasi via Firebase Authentication]
+        C_FA --> C_DB[Ambil data profil pengguna & role dari Firestore]
+        C_DB --> S_CHECK
+        T_ACTION -.-> C_TX[(Simpan transaksi pending & item_locks)]
+        G_ACTION -.-> C_SP[(Perbarui stok katalog & unit fisik)]
+    end
+```
+
+### B. Activity diagram pengajuan dan verifikasi transaksi
+
+Diagram ini memodelkan siklus transaksi dua arah antara Teknisi (pengaju mutasi/kerusakan) dan Admin Gudang (verifikator), termasuk mekanisme reservasi atomik (*item lock*) untuk mencegah pengajuan ganda secara bersamaan.
+
+```mermaid
+flowchart TD
+    subgraph TEK["Teknisi"]
+        T_START([Mulai]) --> T_SCAN[Pindai QR Code unit fisik di menu /scan]
+        T_SCAN --> T_ADD[Pilih aksi: MOVE / DAMAGE / dll. & tambah ke keranjang]
+        T_ADD --> T_CART[Buka halaman Keranjang Permintaan]
+        T_CART --> T_FORM[Isi lokasi tujuan, nomor SPT jika MOVE/OUT, keterangan, & foto]
+        T_FORM --> T_SUBMIT[Klik tombol Kirim Pengajuan]
+        T_NOTIF[Terima notifikasi status pengajuan] --> T_HIST[Buka menu Riwayat Transaksi]
+        T_HIST --> T_END([Selesai])
+    end
+
+    subgraph SYS["Sistem Aplikasi Telkomsat"]
+        T_SUBMIT --> S_VAL{Input & SPT valid?}
+        S_VAL -->|Tidak| S_ERR_FORM[Tampilkan pesan validasi formulir]
+        S_ERR_FORM --> T_FORM
+        S_VAL -->|Ya| S_LOCK_CHK[Jalankan transaksi atomik cek item_locks]
+        
+        S_IS_LOCKED{Ada reservasi pending aktif?}
+        S_IS_LOCKED -->|Ya| S_ERR_LOCK[Tolak pengajuan: Item sedang dalam proses pending]
+        S_ERR_LOCK --> T_END
+        S_IS_LOCKED -->|Tidak| S_CREATE_TX[Simpan transaksi pending & buat reservasi item_locks]
+        
+        S_CREATE_TX --> S_PUSH_ADM[Kirim notifikasi push ke Admin Gudang]
+        
+        G_DECIDE{Keputusan verifikasi?}
+        G_DECIDE -->|Tolak| S_REJECT[Eksekusi executeAtomicRejection: set status rejected, simpan alasan, & lepas item_locks]
+        G_DECIDE -->|Setujui| S_APPROVE[Eksekusi executeAtomicApproval: set status completed, update unit fisik, update stok katalog, & lepas item_locks]
+        
+        S_REJECT --> S_NOTIF_USER[Kirim notifikasi keputusan ke Teknisi]
+        S_APPROVE --> S_NOTIF_USER
+        S_NOTIF_USER --> T_NOTIF
+    end
+
+    subgraph DB["Firestore Database"]
+        S_LOCK_CHK --> D_LOCK[(Koleksi item_locks)]
+        D_LOCK --> S_IS_LOCKED
+        S_CREATE_TX --> D_TX[(Koleksi transaksi & item_locks)]
+        S_REJECT --> D_TX
+        S_APPROVE --> D_ITEMS[(Koleksi sparepart_items & spareparts)]
+        S_APPROVE --> D_TX
+    end
+
+    subgraph ADM["Admin Gudang"]
+        S_PUSH_ADM --> G_OPEN[Buka menu Approval Transaksi /spareparts/verifikasi]
+        G_OPEN --> G_REVIEW[Tinjau identitas fisik, nomor SPT, catatan, dan foto bukti]
+        G_REVIEW --> G_DECIDE
+    end
+```
+
+### C. Activity diagram transaksi langsung Admin Gudang
+
+Diagram ini memodelkan alur kerja penyerahan barang secara langsung di gudang (*fast-path transaction*) oleh Admin Gudang tanpa melewati alur *pending* dan *approval*, yang sekaligus mencetak Berita Acara / Surat Jalan PDF secara otomatis.
+
+```mermaid
+flowchart TD
+    subgraph ADM["Admin Gudang"]
+        A_START([Mulai]) --> A_OPEN[Buka menu Scan Gudang /scan/gudang]
+        A_OPEN --> A_SCAN[Multi-scan QR Code unit fisik atau input SN/tagging]
+        A_SCAN --> A_MODE[Pilih mode transaksi: Serah-Bawa MOVE / Rusak / Return / Update]
+        A_MODE --> A_INPUT[Input metadata: nama teknisi penerima, nomor SPT, lokasi, catatan]
+        A_INPUT --> A_SUBMIT[Klik tombol Proses & Simpan Transaksi]
+        
+        A_PDF[Unduh Berita Acara / Surat Jalan PDF] --> A_HANDOVER[Serahkan fisik sparepart & lembar Berita Acara ke teknisi]
+        A_HANDOVER --> A_END([Selesai])
+    end
+
+    subgraph SYS["Sistem Aplikasi Telkomsat"]
+        A_SUBMIT --> S_VAL{Data & otorisasi valid?}
+        S_VAL -->|Tidak| S_ERR[Tampilkan pesan peringatan data belum lengkap]
+        S_ERR --> A_INPUT
+        S_VAL -->|Ya| S_BATCH[Eksekusi batch submit submitAdminScanBatch]
+        
+        S_BATCH --> S_DB_WRITE[Update data unit fisik, sinkronkan stok katalog, simpan transaksi completed]
+        S_DB_WRITE --> S_AUDIT[Catat audit log ke koleksi aktivitas]
+        S_AUDIT --> S_GEN_PDF[Generate otomatis Berita Acara / Dokumen Serah Terima PDF]
+        S_GEN_PDF --> A_PDF
+    end
+
+    subgraph DB["Firestore Database"]
+        S_DB_WRITE --> D_ITEMS[(sparepart_items: update lokasiSaatIni & status)]
+        S_DB_WRITE --> D_SP[(spareparts: stokGudang & stokTotal disinkronkan)]
+        S_DB_WRITE --> D_TX[(transaksi: statusTransaksi completed instan)]
+        S_AUDIT --> D_LOG[(aktivitas: audit log tersimpan)]
+    end
+
+    subgraph REC["Teknisi / Personil Penerima"]
+        A_HANDOVER --> R_RECV[Menerima unit fisik sparepart & menandatangani Berita Acara]
+        R_RECV --> R_END([Selesai])
+    end
+```
+
+### D. Flowchart teknisi
 
 ```mermaid
 flowchart TD
