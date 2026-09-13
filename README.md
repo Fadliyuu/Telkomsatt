@@ -332,7 +332,7 @@ flowchart TB
     FA -->|Token autentikasi dan status sesi| P1
     D1 -->|Profil hak akses dan status akun| P1
     P1 -->|Pembaruan data akun| D1
-    P1 -->|Hasil autentikasi dan akses menu| ADM
+    P1 -->|Hasil autentikasi hasil pengelolaan akun dan akses menu| ADM
     P1 -->|Hasil autentikasi dan status sesi| GD
     P1 -->|Hasil autentikasi dan status sesi| TK
     P1 -->|Hasil autentikasi dan status sesi| SP
@@ -346,7 +346,7 @@ flowchart TB
     P2 -->|Detail informasi inventaris| GD
 
     %% 3.0 Transaksi dan verifikasi
-    TK -->|Pengajuan mutasi berkas foto SPT dan tujuan| P3
+    TK -->|Data QR pilihan item pengajuan mutasi berkas foto SPT dan tujuan| P3
     GD -->|Transaksi langsung dan keputusan verifikasi| P3
     P1 -->|Identitas sesi terautentikasi| P3
     D1 -->|Profil peran dan status akun| P3
@@ -358,7 +358,7 @@ flowchart TB
     P3 -->|Pencatatan dan pelepasan reservasi| D4
     P3 -->|Berkas foto bukti transaksi| CL
     CL -->|URL foto bukti| P3
-    P3 -->|Ringkasan hasil pengajuan per item| TK
+    P3 -->|Detail unit dan ringkasan hasil pengajuan per item| TK
     P3 -->|Hasil pemrosesan transaksi dan daftar pending| GD
 
     %% 4.0 Laporan dan pemantauan
@@ -367,10 +367,10 @@ flowchart TB
     SP -->|Parameter filter dan periode laporan| P4
     D2 -->|Data inventaris terkini| P4
     D3 -->|Riwayat transaksi| P4
-    D5 -->|Log aktivitas sistem| P4
+    D5 -->|Data aktivitas dari notifications| P4
     P4 -->|Riwayat transaksi sendiri| TK
     P4 -->|Laporan inventaris dan mutasi| GD
-    P4 -->|Dashboard analitik dan laporan komprehensif| SP
+    P4 -->|Ringkasan dashboard laporan inventaris dan mutasi serta informasi aktivitas| SP
 
     %% 5.0 Notifikasi dan aktivitas
     P1 -->|Aksi autentikasi dan akun| P5
