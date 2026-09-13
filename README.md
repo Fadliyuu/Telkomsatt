@@ -422,7 +422,7 @@ flowchart TB
 
     %% 3.2 Validasi data transaksi
     T -->|Jenis transaksi penerima SPT tujuan dan keterangan| B
-    G -->|Data transaksi langsung| B
+    G -->|Data transaksi langsung termasuk identitas item| B
     U -->|Profil peran dan status akun pengaju| B
     B -->|Kesalahan validasi| T
     B -->|Kesalahan validasi| G
