@@ -52,7 +52,17 @@ export const uploadImage = async (
     throw new Error(error.error || "Failed to upload image");
   }
 
-  const data = await response.json();
+  const result = await response.json();
+  const data = result?.data;
+  if (
+    result?.success !== true ||
+    typeof data?.url !== "string" ||
+    !data.url.trim() ||
+    typeof data?.publicId !== "string" ||
+    !data.publicId.trim()
+  ) {
+    throw new Error("Respons upload tidak valid. Silakan unggah ulang foto.");
+  }
   return {
     url: data.url,
     publicId: data.publicId,
