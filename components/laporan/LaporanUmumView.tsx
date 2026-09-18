@@ -4,7 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import ErrorState from "@/components/ErrorState";
 import { getReportDateRange, toLocalDateInput } from "@/lib/utils/reportDates";
 import { getTransactions } from "@/lib/firebase/transactions";
-import { Transaksi, JenisTransaksi } from "@/types";
+import { Transaksi, JenisTransaksi, USER_ROLE_LABELS } from "@/types";
+import { useAuthStore } from "@/lib/store/useAuthStore";
 import { formatDate } from "@/lib/utils";
 import { FileText, Filter, TrendingUp, AlertTriangle, RotateCcw, Activity } from "lucide-react";
 import toast from "react-hot-toast";
@@ -48,6 +49,7 @@ interface ReportFilters {
 }
 
 export default function LaporanUmumView() {
+  const user = useAuthStore((state) => state.user);
   const [transactions, setTransactions] = useState<Transaksi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -182,6 +184,13 @@ export default function LaporanUmumView() {
         sparepartNames,
         filters,
         stats,
+        meta: user
+          ? {
+              exportedByName: user.nama,
+              exportedByRole: USER_ROLE_LABELS[user.role] || user.role,
+              exportedByEmail: user.email,
+            }
+          : undefined,
       }),
       {
         loading: "Menyiapkan PDF…",

@@ -159,6 +159,20 @@ export async function updateUser(
   });
 }
 
+export async function updateUserEmail(id: string, email: string): Promise<void> {
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) throw new Error("Login diperlukan");
+  const response = await fetch("/api/admin/users/email", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ uid: id, email }),
+  });
+  if (!response.ok) {
+    const result = await response.json().catch(() => ({}));
+    throw new Error(result.error || "Gagal mengganti email pengguna");
+  }
+}
+
 // Delete user
 export async function deleteUser(id: string): Promise<void> {
   const user = await getUserById(id).catch(() => null);
@@ -211,5 +225,3 @@ export async function setUserPassword(id: string, password: string): Promise<voi
     throw new Error(data.error || "Gagal mengganti password pengguna");
   }
 }
-
-

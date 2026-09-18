@@ -102,7 +102,6 @@ export const DEFAULT_ROLE_PATH: Record<UserRole, string> = {
 const SPAREPARTS_GUDANG_ONLY = [
   "/spareparts/tambah",
   "/spareparts/export-import",
-  "/spareparts/import-foto",
   "/spareparts/verifikasi",
 ];
 

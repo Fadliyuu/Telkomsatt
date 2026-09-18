@@ -186,7 +186,23 @@ export default function DetailTransaksiPage() {
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-white/10 pb-4">
                 <div>
                   <div className="flex flex-wrap items-center gap-3 mb-2">
-                    <span className="px-3 py-1 bg-blue-500/20 text-blue-300 font-extrabold text-xs rounded-lg border border-blue-500/30">
+                    <span
+                      className={`px-3 py-1 font-extrabold text-xs rounded-lg border ${
+                        transaction.jenisTransaksi === "IN"
+                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                          : transaction.jenisTransaksi === "RETURN"
+                          ? "bg-teal-500/20 text-teal-300 border-teal-500/30"
+                          : transaction.jenisTransaksi === "OUT"
+                          ? "bg-purple-500/20 text-purple-300 border-purple-500/30"
+                          : transaction.jenisTransaksi === "DAMAGE"
+                          ? "bg-red-500/20 text-red-300 border-red-500/30"
+                          : transaction.jenisTransaksi === "FOUND"
+                          ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/30"
+                          : transaction.jenisTransaksi === "DISMANTLE"
+                          ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
+                          : "bg-blue-500/20 text-blue-300 border-blue-500/30"
+                      }`}
+                    >
                       {getJenisTransaksiLabel(transaction.jenisTransaksi)}
                     </span>
                     {transaction.nomorSpt && (

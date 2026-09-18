@@ -183,7 +183,7 @@ export default function LaporanGudangView() {
               </p>
               <p className="mt-1 text-4xl font-extrabold text-white">{stats.masuk}</p>
               <p className="mt-1 text-xs text-gray-300">
-                Return {stats.return} · Found {stats.found}
+                Baru {stats.baru} · Return {stats.return} · Found {stats.found}
               </p>
             </div>
             <div className="rounded-2xl bg-emerald-500/20 p-3.5 border border-emerald-500/30 shadow-lg">

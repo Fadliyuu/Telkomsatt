@@ -140,7 +140,7 @@ export interface Lokasi {
 }
 
 // Transaction Types
-export type ActiveTransactionType = "OUT" | "MOVE" | "RETURN" | "DAMAGE";
+export type ActiveTransactionType = "IN" | "OUT" | "MOVE" | "RETURN" | "DAMAGE";
 export type LegacyTransactionType = "FOUND" | "DISMANTLE";
 export type JenisTransaksi = ActiveTransactionType | LegacyTransactionType;
 export type StatusTransaksi = "pending" | "completed" | "rejected";
@@ -148,6 +148,7 @@ export type StatusBarang = "Normal" | "Rusak" | "Hilang" | "Perlu Pengecekan";
 export type KondisiDismantle = "Rusak" | "Bagus" | "Tidak Diketahui";
 
 export const JENIS_TRANSAKSI_LABELS: Record<JenisTransaksi, string> = {
+  IN: "Barang Masuk Baru",
   MOVE: "Pindah Lokasi",
   OUT: "Barang Keluar",
   DAMAGE: "Barang Rusak",
@@ -226,7 +227,7 @@ export interface SessionKeranjangItem {
   id: string;
   idSessionKeranjang: string;
   idSparepart: string;
-  jenisAksi: "OUT" | "MOVE" | "RETURN" | "DAMAGE" | "FOUND" | "DISMANTLE";
+  jenisAksi: "IN" | "OUT" | "MOVE" | "RETURN" | "DAMAGE" | "FOUND" | "DISMANTLE";
   lokasiDitemukan?: string; // Lokasi saat barang ditemukan (untuk FOUND)
   kondisiDismantle?: KondisiDismantle; // Kondisi untuk DISMANTLE: Rusak atau Bagus
   kondisiBarang?: KondisiDismantle; // Kondisi untuk FOUND: Rusak, Bagus, atau Tidak Diketahui

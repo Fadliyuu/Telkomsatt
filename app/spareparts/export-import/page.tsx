@@ -21,7 +21,6 @@ import {
   CheckCircle,
   ArrowLeft,
   Loader2,
-  Camera,
   Info,
   RefreshCw,
 } from "lucide-react";
@@ -192,13 +191,6 @@ export default function ExportImportPage() {
               </p>
             </div>
           </div>
-          <Link
-            href="/spareparts/import-foto"
-            className="inline-flex shrink-0 items-center gap-2 self-start rounded-xl border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-semibold text-violet-800 shadow-sm transition-all hover:border-violet-300 hover:shadow-md"
-          >
-            <Camera className="h-4 w-4" />
-            Import dari Foto (OCR)
-          </Link>
         </div>
 
         {/* Info banner */}

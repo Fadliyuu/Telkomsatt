@@ -13,9 +13,10 @@ import {
   limit,
   startAfter,
   getCountFromServer,
+  writeBatch,
   DocumentSnapshot,
 } from "firebase/firestore";
-import { db } from "./config";
+import { auth, db } from "./config";
 import { COLLECTIONS } from "./collections";
 import { SparepartItem, USER_ROLE_LABELS, UserRole } from "@/types";
 import {
@@ -356,10 +357,41 @@ export const createSparepartItem = async (
       itemData.perluVerifikasi = data.perluVerifikasi;
     }
 
-    const docRef = await addDoc(
-      collection(db, COLLECTION_SPAREPART_ITEMS),
-      itemData
-    );
+    let docRef;
+    if (data.perluVerifikasi) {
+      docRef = await addDoc(collection(db, COLLECTION_SPAREPART_ITEMS), itemData);
+    } else {
+      docRef = doc(collection(db, COLLECTION_SPAREPART_ITEMS));
+      const transactionRef = doc(collection(db, COLLECTIONS.TRANSAKSI));
+      const actorUid = auth.currentUser?.uid;
+      if (!actorUid) throw new Error("Login diperlukan untuk menambah barang");
+      const actorName = data.carriedByName || data.ditambahkanOleh || "Admin Gudang";
+      const now = Timestamp.now();
+      const batch = writeBatch(db);
+      batch.set(docRef, itemData);
+      batch.set(transactionRef, {
+        idSparepart: docRef.id,
+        namaItem: data.namaPerangkat,
+        serialNumber: data.serialNumber || "",
+        tagging: data.tagging || "",
+        jenisTransaksi: "IN",
+        lokasiTujuan: data.lokasiSaatIni || "Gudang",
+        jumlah: 1,
+        statusBarang: data.status === "Rusak" ? "Rusak" : "Normal",
+        statusTransaksi: "completed",
+        requestedByUid: actorUid,
+        requestedByName: actorName,
+        requestedByRole: data.carriedByRole || "admin_gudang",
+        requestedAt: now,
+        approvedByUid: actorUid,
+        approvedByName: actorName,
+        approvedAt: now,
+        carriedByName: actorName,
+        keterangan: "Barang baru dicatat ke inventaris",
+        createdAt: now,
+      });
+      await batch.commit();
+    }
 
     const actualQrUrl = generateQRCodeUrl(docRef.id);
     let qrCodeDataUrl = "";
@@ -700,6 +732,11 @@ export const verifikasiItem = async (
 ): Promise<void> => {
   try {
     const docRef = doc(db, COLLECTION_SPAREPART_ITEMS, id);
+    const existingSnap = await getDoc(docRef);
+    const existingData = existingSnap.exists()
+      ? (existingSnap.data() as SparepartItem)
+      : null;
+
     const payload = {
       ...updateData,
       perluVerifikasi: false,
@@ -712,12 +749,69 @@ export const verifikasiItem = async (
       approvedAt: Timestamp.now(),
       updatedAt: Timestamp.now(),
     };
-    await updateDoc(
+
+    const batch = writeBatch(db);
+    batch.update(
       docRef,
       Object.fromEntries(
         Object.entries(payload).filter(([, value]) => value !== undefined)
       )
     );
+
+    // Catat transaksi barang masuk / pengembalian yang telah disetujui masuk ke Base
+    const transactionRef = doc(collection(db, COLLECTIONS.TRANSAKSI));
+    const now = Timestamp.now();
+    const actionType =
+      existingData?.requestedAction || (updateData as any)?.requestedAction || "IN";
+    const namaPerangkat =
+      updateData?.namaPerangkat || existingData?.namaPerangkat || "Sparepart";
+    const serialNumber =
+      updateData?.serialNumber || existingData?.serialNumber || "";
+    const tagging = updateData?.tagging || existingData?.tagging || "";
+    const lokasiTujuan =
+      updateData?.lokasiSaatIni || existingData?.lokasiSaatIni || "Gudang Regional 6";
+
+    batch.set(transactionRef, {
+      idSparepart: id,
+      namaItem: namaPerangkat,
+      serialNumber,
+      tagging,
+      jenisTransaksi: actionType,
+      lokasiAsal: existingData?.lokasiSaatIni || "Site",
+      lokasiTujuan,
+      jumlah: 1,
+      statusBarang:
+        (updateData?.status || existingData?.status) === "Rusak"
+          ? "Rusak"
+          : "Normal",
+      statusTransaksi: "completed",
+      requestedByUid:
+        existingData?.requestedByUid ||
+        approval?.uid ||
+        auth.currentUser?.uid ||
+        "",
+      requestedByName:
+        existingData?.ditambahkanOleh ||
+        existingData?.carriedByName ||
+        "Teknisi",
+      requestedByRole: existingData?.carriedByRole || "teknisi",
+      requestedAt: now,
+      approvedByUid: approval?.uid || auth.currentUser?.uid,
+      approvedByName: approval?.name || adminName,
+      approvedByRole: approval?.role || "admin_gudang",
+      approvedAt: now,
+      carriedByName:
+        existingData?.carriedByName ||
+        existingData?.ditambahkanOleh ||
+        adminName,
+      keterangan:
+        actionType === "RETURN"
+          ? "Pengembalian barang masuk ke base (Gudang Regional 6) telah disetujui"
+          : "Pencatatan barang masuk baru ke inventaris base (Gudang Regional 6) telah disetujui",
+      createdAt: now,
+    });
+
+    await batch.commit();
   } catch (error: unknown) {
     console.error("Error verifikasi item:", error);
     throw error;

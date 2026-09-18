@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { tryAddLogo } from "./pdfShared";
+import { tryAddLogo, formatIdDate } from "./pdfShared";
 import type { Transaksi } from "@/types";
 import {
   ArahBarang,
@@ -142,6 +142,7 @@ function statusBadgeStyle(
 }
 
 const JENIS_PDF_LABEL: Record<JenisTransaksi, string> = {
+  IN: "Masuk Baru",
   OUT: "Keluar",
   MOVE: "Pindah",
   DAMAGE: "Rusak",
@@ -505,6 +506,62 @@ export async function downloadLaporanGudangPdf(params: {
     },
   });
 
+  const finalY =
+    (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable
+      ?.finalY ?? 150;
+
+  const availableY = pageH - MARGIN.bottom - FOOTER_H;
+  let signY = finalY + 8;
+  if (signY + 36 > availableY) {
+    doc.addPage();
+    drawPageFrame(doc, pageW, pageH);
+    drawTopBar(doc, pageW);
+    signY = MARGIN.top + 16;
+  }
+
+  const colW = 68;
+  const leftColX = MARGIN.left + 5;
+  const rightColX = pageW - MARGIN.right - colW - 5;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(51, 65, 85);
+
+  // Kolom Kiri: Diajukan oleh
+  doc.text("Diajukan oleh:", leftColX, signY);
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`${meta.exportedByRole || "Petugas Gudang / Base"}`, leftColX, signY + 4);
+
+  // Kolom Kanan: Diajukan untuk
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(51, 65, 85);
+  doc.text("Diajukan untuk:", rightColX, signY);
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text("Penerima / Atasan Terkait", rightColX, signY + 4);
+
+  // Garis tanda tangan
+  const lineY = signY + 22;
+  doc.setDrawColor(148, 163, 184);
+  doc.setLineWidth(0.35);
+  doc.line(leftColX, lineY, leftColX + colW, lineY);
+  doc.line(rightColX, lineY, rightColX + colW, lineY);
+
+  // Nama & Tanggal
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text(`( ${meta.exportedByName} )`, leftColX, lineY + 4);
+  doc.text("( .................................................... )", rightColX, lineY + 4);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Tanggal: ${formatIdDate(new Date())}`, leftColX, lineY + 8);
+  doc.text("Jabatan / Unit: .............................", rightColX, lineY + 8);
+
   addFooter(doc, meta, pageW, pageH);
 
   const tabSlug = activeTab === "semua" ? "semua" : activeTab;
@@ -512,5 +569,4 @@ export async function downloadLaporanGudangPdf(params: {
     `laporan-masuk-keluar_${filters.startDate}_${filters.endDate}_${tabSlug}.pdf`
   );
 }
-
 

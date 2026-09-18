@@ -145,35 +145,6 @@ export const exportSelectedToExcel = (
   saveAs(blob, exportFileName);
 };
 
-export const exportRowsPreviewToExcel = (
-  rows: NormalizedSparepartRow[],
-  fileName?: string
-): void => {
-  const exportData = rows.map((row, index) => ({
-    [EXCEL_COLUMNS.NO]: index + 1,
-    [EXCEL_COLUMNS.NAMA]: row.namaPerangkat,
-    [EXCEL_COLUMNS.SN]: row.serialNumber,
-    [EXCEL_COLUMNS.TAG]: row.tagging,
-    [EXCEL_COLUMNS.CARI_FISIK]: row.cariFisik,
-    [EXCEL_COLUMNS.STATUS]: row.status,
-    [EXCEL_COLUMNS.LOKASI]: row.lokasiSaatIni,
-    [EXCEL_COLUMNS.KATEGORI]: row.kategori,
-    [EXCEL_COLUMNS.KETERANGAN]: row.keterangan,
-  }));
-
-  const ws = XLSX.utils.json_to_sheet(exportData);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Preview OCR");
-  const excelBuffer = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-  const blob = new Blob([excelBuffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  saveAs(
-    blob,
-    fileName || `Preview_OCR_${new Date().toISOString().split("T")[0]}.xlsx`
-  );
-};
-
 export const downloadExcelTemplate = (): void => {
   const templateData = [
     {

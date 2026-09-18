@@ -152,13 +152,23 @@ export const createTransaction = async (
           stokTotal: Math.max(0, stokTotal - transaction.jumlah),
           updatedAt: Timestamp.now(),
         });
+      } else if (transaction.jenisTransaksi === "IN") {
+        // IN = barang baru masuk ke gudang/base — tambah stokGudang & stokTotal
+        tx.update(sparepartRef, {
+          stokGudang: stokGudang + transaction.jumlah,
+          stokTotal: stokTotal + transaction.jumlah,
+          updatedAt: Timestamp.now(),
+        });
       } else if (
         transaction.jenisTransaksi === "RETURN" ||
         ((transaction.jenisTransaksi === "DISMANTLE" || transaction.jenisTransaksi === "FOUND") &&
           transaction.statusBarang === "Normal" &&
-          (transaction.lokasiTujuan?.toLowerCase().includes("gudang") || !transaction.lokasiTujuan))
+          (transaction.lokasiTujuan?.toLowerCase().includes("gudang") ||
+           transaction.lokasiTujuan?.toLowerCase().includes("base") ||
+           transaction.lokasiTujuan?.toLowerCase().includes("regional 6") ||
+           !transaction.lokasiTujuan))
       ) {
-        // RETURN / DISMANTLE (Bagus) / FOUND (Bagus) = item comes to gudang — increase stokGudang.
+        // RETURN / DISMANTLE (Bagus) / FOUND (Bagus) = item masuk ke base/gudang — tambah stokGudang
         tx.update(sparepartRef, {
           stokGudang: stokGudang + transaction.jumlah,
           updatedAt: Timestamp.now(),
@@ -315,9 +325,23 @@ async function updateSparepartItemStatus(
       if (lokasiTujuan) updatePayload.lokasiSaatIni = lokasiTujuan;
       break;
 
+    case "RETURN": {
+      updatePayload.lokasiSaatIni = lokasiTujuan || "Gudang Regional 6";
+      updatePayload.status = "Tersedia";
+      updatePayload.cariFisik = "Sesuai";
+      break;
+    }
+
+    case "IN": {
+      updatePayload.lokasiSaatIni = lokasiTujuan || "Gudang Regional 6";
+      updatePayload.status = "Tersedia";
+      updatePayload.cariFisik = "Sesuai";
+      break;
+    }
+
     case "FOUND": {
       const kondisi = item.kondisiBarang;
-      updatePayload.lokasiSaatIni = item.lokasiDitemukan || lokasiTujuan;
+      updatePayload.lokasiSaatIni = item.lokasiDitemukan || lokasiTujuan || "Gudang Regional 6";
       updatePayload.cariFisik = "Sesuai";
       updatePayload.status =
         kondisi === "Tidak Diketahui" ? "Perlu Pengecekan" : kondisi === "Rusak" ? "Rusak" : "Tersedia";
@@ -326,7 +350,7 @@ async function updateSparepartItemStatus(
 
     case "DISMANTLE": {
       const kondisi = item.kondisiDismantle;
-      if (lokasiTujuan) updatePayload.lokasiSaatIni = lokasiTujuan;
+      updatePayload.lokasiSaatIni = lokasiTujuan || "Gudang Regional 6";
       updatePayload.status =
         kondisi === "Rusak" ? "Rusak" : kondisi === "Tidak Diketahui" ? "Perlu Pengecekan" : "Tersedia";
       break;
@@ -688,7 +712,7 @@ export const getTransactions = async (
   filters?: {
     idSparepart?: string;
     namaTeknisi?: string;
-    jenisTransaksi?: "OUT" | "MOVE" | "DAMAGE" | "RETURN" | "FOUND" | "DISMANTLE";
+    jenisTransaksi?: "IN" | "OUT" | "MOVE" | "DAMAGE" | "RETURN" | "FOUND" | "DISMANTLE";
     requestedByUid?: string;
     startDate?: Date;
     endDate?: Date;

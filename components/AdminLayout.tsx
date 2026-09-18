@@ -194,6 +194,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", exact: true },
           { href: "/spareparts", icon: Package, label: "Data Sparepart", exact: true },
           { href: "/spareparts/tambah", icon: Package, label: "Tambah Sparepart", exact: true },
+          { href: "/spareparts/export-import", icon: FileText, label: "Import Data", exact: true },
           { href: "/scan/gudang", icon: QrCode, label: "QR Code", exact: true },
           { href: "/spareparts/verifikasi", icon: ClipboardCheck, label: "Verifikasi", exact: true },
           { href: "/transaksi", icon: History, label: "Daftar Transaksi", exact: true },

@@ -4,7 +4,7 @@ import { useCallback, useRef, useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import AdminLayout from "@/components/AdminLayout";
 import UserAvatar from "@/components/UserAvatar";
-import { getUserById, setUserPassword, updateUser } from "@/lib/firebase/users";
+import { getUserById, setUserPassword, updateUser, updateUserEmail } from "@/lib/firebase/users";
 import { deleteImage, uploadImage } from "@/lib/utils/cloudinary";
 import { User, UserRole, USER_ROLE_LABELS, USER_ROLES } from "@/types";
 import toast from "react-hot-toast";
@@ -100,9 +100,11 @@ export default function EditUserPage() {
         return;
       }
 
+      if (user && formData.email.trim().toLowerCase() !== user.email.toLowerCase()) {
+        await updateUserEmail(userId, formData.email);
+      }
       await updateUser(userId, {
         nama: formData.nama,
-        email: formData.email,
         role: formData.role,
         nomorHP: formData.nomorHP || "",
         alamat: formData.alamat || "",

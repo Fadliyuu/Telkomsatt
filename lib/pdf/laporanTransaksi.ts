@@ -1,8 +1,14 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { tryAddLogo } from "./pdfShared";
+import { tryAddLogo, formatIdDate } from "./pdfShared";
 import type { Transaksi, JenisTransaksi } from "@/types";
 import { formatDate } from "@/lib/utils";
+
+export interface LaporanTransaksiPdfMeta {
+  exportedByName?: string;
+  exportedByRole?: string;
+  exportedByEmail?: string;
+}
 import {
   getApprovedBy,
   getCarriedBy,
@@ -32,6 +38,7 @@ export interface LaporanPdfStats {
 
 function jenisLabel(j: string): string {
   const m: Record<string, string> = {
+    IN: "Masuk Baru",
     MOVE: "Pindah",
     DAMAGE: "Rusak",
     RETURN: "Kembali",
@@ -189,8 +196,9 @@ export async function downloadLaporanTransaksiPdf(params: {
   sparepartNames: Record<string, string>;
   filters: LaporanPdfFilters;
   stats: LaporanPdfStats;
+  meta?: LaporanTransaksiPdfMeta;
 }): Promise<void> {
-  const { transactions, sparepartNames, filters, stats } = params;
+  const { transactions, sparepartNames, filters, stats, meta } = params;
 
   const doc = new jsPDF({
     orientation: "landscape",
@@ -381,10 +389,70 @@ export async function downloadLaporanTransaksiPdf(params: {
     },
   });
 
+  const finalY =
+    (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable
+      ?.finalY ?? tableStartY + 40;
+
+  const availableY = pageH - 24;
+  let signY = finalY + 8;
+  if (signY + 36 > availableY) {
+    doc.addPage();
+    doc.setFillColor(...PAGE_BG);
+    doc.rect(0, 0, pageW, pageH, "F");
+    doc.setFillColor(...RED);
+    doc.rect(0, 0, pageW, 3.5, "F");
+    signY = margin + 14;
+  }
+
+  const colW = 75;
+  const leftColX = margin + 8;
+  const rightColX = pageW - margin - colW - 8;
+
+  const exporterName = meta?.exportedByName || "Administrator";
+  const exporterRole = meta?.exportedByRole || "Admin Sistem / Gudang";
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(51, 65, 85);
+
+  // Kolom Kiri: Diajukan oleh
+  doc.text("Diajukan oleh:", leftColX, signY);
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(exporterRole, leftColX, signY + 4);
+
+  // Kolom Kanan: Diajukan untuk
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(51, 65, 85);
+  doc.text("Diajukan untuk:", rightColX, signY);
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text("Penerima / Atasan Terkait", rightColX, signY + 4);
+
+  // Garis tanda tangan
+  const lineY = signY + 20;
+  doc.setDrawColor(148, 163, 184);
+  doc.setLineWidth(0.35);
+  doc.line(leftColX, lineY, leftColX + colW, lineY);
+  doc.line(rightColX, lineY, rightColX + colW, lineY);
+
+  // Nama & Tanggal
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text(`( ${exporterName} )`, leftColX, lineY + 4);
+  doc.text("( .................................................... )", rightColX, lineY + 4);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Tanggal: ${formatIdDate(new Date())}`, leftColX, lineY + 8.5);
+  doc.text("Jabatan / Unit: .............................", rightColX, lineY + 8.5);
+
   addFooter(doc);
 
   const fname = `laporan-transaksi_${filters.startDate}_${filters.endDate}.pdf`;
   doc.save(fname);
 }
-
 

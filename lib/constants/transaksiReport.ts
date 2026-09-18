@@ -4,6 +4,7 @@ import { JenisTransaksi, Transaksi } from "@/types";
 export type ArahBarang = "keluar" | "masuk" | "lainnya";
 
 export const JENIS_TRANSAKSI_LABELS: Record<JenisTransaksi, string> = {
+  IN: "Barang Masuk Baru",
   MOVE: "Pindah Lokasi",
   OUT: "Barang Keluar",
   DAMAGE: "Barang Rusak",
@@ -16,7 +17,7 @@ export const JENIS_TRANSAKSI_LABELS: Record<JenisTransaksi, string> = {
 export const JENIS_BARANG_KELUAR: JenisTransaksi[] = ["MOVE", "OUT", "DISMANTLE"];
 
 /** Barang masuk gudang / ke inventaris */
-export const JENIS_BARANG_MASUK: JenisTransaksi[] = ["RETURN", "FOUND"];
+export const JENIS_BARANG_MASUK: JenisTransaksi[] = ["IN", "RETURN", "FOUND"];
 
 export function getArahBarang(jenis: JenisTransaksi): ArahBarang {
   if (JENIS_BARANG_KELUAR.includes(jenis)) return "keluar";
@@ -54,6 +55,7 @@ export function getGudangStats(transactions: Transaksi[]) {
     lainnya: lainnya.length,
     move: transactions.filter((t) => t.jenisTransaksi === "MOVE").length,
     return: transactions.filter((t) => t.jenisTransaksi === "RETURN").length,
+    baru: transactions.filter((t) => t.jenisTransaksi === "IN").length,
     found: transactions.filter((t) => t.jenisTransaksi === "FOUND").length,
     dismantle: transactions.filter((t) => t.jenisTransaksi === "DISMANTLE")
       .length,
