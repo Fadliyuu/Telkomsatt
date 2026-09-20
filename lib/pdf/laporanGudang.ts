@@ -30,6 +30,8 @@ const EMERALD: [number, number, number] = [5, 150, 105];
 const MARGIN = { top: 8, right: 12, bottom: 14, left: 12 };
 const FOOTER_H = 12;
 
+export type LaporanGudangScope = ArahBarang | JenisTransaksi | "semua";
+
 export interface LaporanGudangPdfMeta {
   exportedByName: string;
   exportedByEmail?: string;
@@ -151,6 +153,31 @@ const JENIS_PDF_LABEL: Record<JenisTransaksi, string> = {
   DISMANTLE: "Dismantle",
 };
 
+function getReportTitle(scope: LaporanGudangScope): string {
+  const titles: Record<LaporanGudangScope, string> = {
+    semua: "LAPORAN TRANSAKSI SPAREPART",
+    keluar: "LAPORAN SPAREPART KELUAR",
+    masuk: "LAPORAN SPAREPART MASUK",
+    lainnya: "LAPORAN SPAREPART LAINNYA",
+    IN: "LAPORAN SPAREPART MASUK BARU",
+    OUT: "LAPORAN SPAREPART KELUAR",
+    MOVE: "LAPORAN PINDAH SPAREPART",
+    DAMAGE: "LAPORAN SPAREPART RUSAK",
+    RETURN: "LAPORAN PENGEMBALIAN SPAREPART",
+    FOUND: "LAPORAN SPAREPART DITEMUKAN",
+    DISMANTLE: "LAPORAN DISMANTLE SPAREPART",
+  };
+  return titles[scope];
+}
+
+function getReportScopeLabel(scope: LaporanGudangScope): string {
+  if (scope === "semua") return "Semua transaksi";
+  if (scope === "keluar" || scope === "masuk" || scope === "lainnya") {
+    return `Arah: ${getArahLabel(scope)}`;
+  }
+  return `Jenis: ${JENIS_PDF_LABEL[scope]}`;
+}
+
 function formatDatePdf(d: Date): string {
   return new Intl.DateTimeFormat("id-ID", {
     day: "2-digit",
@@ -259,10 +286,10 @@ export async function downloadLaporanGudangPdf(params: {
   transactions: Transaksi[];
   sparepartNames: Record<string, string>;
   filters: LaporanFilters;
-  activeTab: ArahBarang | "semua";
+  reportScope: LaporanGudangScope;
   meta: LaporanGudangPdfMeta;
 }): Promise<void> {
-  const { transactions, sparepartNames, filters, activeTab, meta } = params;
+  const { transactions, sparepartNames, filters, reportScope, meta } = params;
   const stats = getGudangStats(transactions);
 
   const doc = new jsPDF({
@@ -273,7 +300,7 @@ export async function downloadLaporanGudangPdf(params: {
   });
 
   doc.setProperties({
-    title: "Laporan Barang Masuk Keluar",
+    title: getReportTitle(reportScope),
     subject: "Inventaris Sparepart Telkomsat Regional 6",
     creator: "Telkomsat Inventaris QR",
   });
@@ -301,14 +328,14 @@ export async function downloadLaporanGudangPdf(params: {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(30, 41, 59);
-  doc.text("LAPORAN BARANG MASUK & KELUAR", textX, y + 7);
+  doc.text(getReportTitle(reportScope), textX, y + 7);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6.5);
   doc.setTextColor(...SLATE);
   const filterLine = [
     `Periode ${formatIdDateShort(filters.startDate)} – ${formatIdDateShort(filters.endDate)}`,
-    activeTab === "semua" ? "Semua arah" : getArahLabel(activeTab),
+    getReportScopeLabel(reportScope),
     filters.namaTeknisi?.trim() ? `Teknisi: ${filters.namaTeknisi.trim()}` : null,
   ]
     .filter(Boolean)
@@ -564,9 +591,9 @@ export async function downloadLaporanGudangPdf(params: {
 
   addFooter(doc, meta, pageW, pageH);
 
-  const tabSlug = activeTab === "semua" ? "semua" : activeTab;
+  const tabSlug = reportScope.toLowerCase();
   doc.save(
-    `laporan-masuk-keluar_${filters.startDate}_${filters.endDate}_${tabSlug}.pdf`
+    `laporan-sparepart_${tabSlug}_${filters.startDate}_${filters.endDate}.pdf`
   );
 }
 

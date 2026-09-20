@@ -39,6 +39,7 @@ export interface LaporanPdfStats {
 function jenisLabel(j: string): string {
   const m: Record<string, string> = {
     IN: "Masuk Baru",
+    OUT: "Keluar",
     MOVE: "Pindah",
     DAMAGE: "Rusak",
     RETURN: "Kembali",
@@ -46,6 +47,20 @@ function jenisLabel(j: string): string {
     DISMANTLE: "Dismantle",
   };
   return m[j] || j;
+}
+
+function reportTitle(jenis?: JenisTransaksi): string {
+  if (!jenis) return "LAPORAN TRANSAKSI SPAREPART";
+  const titles: Record<JenisTransaksi, string> = {
+    IN: "LAPORAN SPAREPART MASUK BARU",
+    OUT: "LAPORAN SPAREPART KELUAR",
+    MOVE: "LAPORAN PINDAH SPAREPART",
+    DAMAGE: "LAPORAN SPAREPART RUSAK",
+    RETURN: "LAPORAN PENGEMBALIAN SPAREPART",
+    FOUND: "LAPORAN SPAREPART DITEMUKAN",
+    DISMANTLE: "LAPORAN DISMANTLE SPAREPART",
+  };
+  return titles[jenis];
 }
 
 function filterDeskripsi(f: LaporanPdfFilters): string {
@@ -251,7 +266,7 @@ export async function downloadLaporanTransaksiPdf(params: {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(17);
   doc.setTextColor(30, 41, 59);
-  doc.text("LAPORAN TRANSAKSI SPAREPART", titleX, headerTop + 11);
+  doc.text(reportTitle(filters.jenisTransaksi), titleX, headerTop + 11);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.2);
@@ -452,7 +467,10 @@ export async function downloadLaporanTransaksiPdf(params: {
 
   addFooter(doc);
 
-  const fname = `laporan-transaksi_${filters.startDate}_${filters.endDate}.pdf`;
+  const suffix = filters.jenisTransaksi
+    ? `_${filters.jenisTransaksi.toLowerCase()}`
+    : "";
+  const fname = `laporan-transaksi${suffix}_${filters.startDate}_${filters.endDate}.pdf`;
   doc.save(fname);
 }
 

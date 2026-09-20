@@ -13,8 +13,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useAuthStore } from "@/lib/store/useAuthStore";
-import { downloadLaporanGudangPdf } from "@/lib/pdf/laporanGudang";
-import { USER_ROLE_LABELS } from "@/types";
+import { downloadLaporanGudangPdf, type LaporanGudangScope } from "@/lib/pdf/laporanGudang";
+import { Transaksi, USER_ROLE_LABELS } from "@/types";
 import { formatDate } from "@/lib/utils";
 import {
   ArahBarang,
@@ -38,7 +38,37 @@ import {
 } from "@/lib/utils/transactionDisplay";
 import Link from "next/link";
 
-type TabArah = "semua" | ArahBarang;
+type ReportScope = LaporanGudangScope;
+
+const REPORT_SCOPE_OPTIONS: { id: ReportScope; label: string }[] = [
+  { id: "semua", label: "Semua Transaksi" },
+  { id: "keluar", label: "Barang Keluar" },
+  { id: "masuk", label: "Barang Masuk" },
+  { id: "OUT", label: "Sparepart Keluar" },
+  { id: "IN", label: "Sparepart Masuk Baru" },
+  { id: "MOVE", label: "Pindah Lokasi" },
+  { id: "RETURN", label: "Pengembalian" },
+  { id: "DISMANTLE", label: "Dismantle" },
+  { id: "DAMAGE", label: "Rusak" },
+  { id: "FOUND", label: "Ditemukan" },
+  { id: "lainnya", label: "Lainnya" },
+];
+
+function isArahScope(scope: ReportScope): scope is ArahBarang {
+  return scope === "keluar" || scope === "masuk" || scope === "lainnya";
+}
+
+function filterByReportScope(transactions: Transaksi[], scope: ReportScope) {
+  if (scope === "semua") return transactions;
+  if (isArahScope(scope)) return filterByArah(transactions, scope);
+  return transactions.filter((transaction) => transaction.jenisTransaksi === scope);
+}
+
+function getReportScopeLabel(scope: ReportScope): string {
+  if (scope === "semua") return "Semua";
+  if (isArahScope(scope)) return getArahLabel(scope);
+  return JENIS_TRANSAKSI_LABELS[scope];
+}
 
 function IconDownload({ className }: { className?: string }) {
   return (
@@ -68,7 +98,7 @@ export default function LaporanGudangView() {
       .split("T")[0],
     endDate: new Date().toISOString().split("T")[0],
   });
-  const [activeTab, setActiveTab] = useState<TabArah>("semua");
+  const [reportScope, setReportScope] = useState<ReportScope>("semua");
 
   const {
     transactions,
@@ -78,8 +108,8 @@ export default function LaporanGudangView() {
   } = useLaporanTransaksi(filters);
 
   const filteredTransactions = useMemo(
-    () => filterByArah(transactions, activeTab),
-    [transactions, activeTab]
+    () => filterByReportScope(transactions, reportScope),
+    [transactions, reportScope]
   );
 
   const stats = useMemo(() => getGudangStats(transactions), [transactions]);
@@ -107,7 +137,7 @@ export default function LaporanGudangView() {
         transactions: filteredTransactions,
         sparepartNames,
         filters,
-        activeTab,
+        reportScope,
         meta: {
           exportedByName: user.nama,
           exportedByEmail: user.email,
@@ -123,13 +153,6 @@ export default function LaporanGudangView() {
       toast.error(message);
     }
   };
-
-  const tabs: { id: TabArah; label: string; count: number }[] = [
-    { id: "semua", label: "Semua", count: stats.total },
-    { id: "keluar", label: "Barang Keluar", count: stats.keluar },
-    { id: "masuk", label: "Barang Masuk", count: stats.masuk },
-    { id: "lainnya", label: "Rusak / Lainnya", count: stats.lainnya },
-  ];
 
   return (
     <div className="space-y-6 animate-fade-in pb-8 text-white">
@@ -268,31 +291,27 @@ export default function LaporanGudangView() {
         </div>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex flex-wrap gap-2.5">
-        {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`rounded-xl px-5 py-2.5 text-xs font-bold transition-all ${
-              activeTab === tab.id
-                ? "bg-gradient-to-r from-telkomsat-red to-telkomsat-red-dark text-white shadow-lg shadow-red-600/30 scale-[1.02]"
-                : "border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white"
-            }`}
+      {/* Pilihan ini menentukan data, judul, dan nama file PDF. */}
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 backdrop-blur-xl shadow-xl">
+        <label className="mb-2 block text-xs font-bold uppercase text-gray-400">
+          Jenis Laporan yang Dicetak
+        </label>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <select
+            value={reportScope}
+            onChange={(event) => setReportScope(event.target.value as ReportScope)}
+            className="w-full rounded-xl border border-white/15 bg-[#161922] px-4 py-3 text-sm font-bold text-white outline-none transition-all focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20 sm:max-w-md"
           >
-            {tab.label}
-            <span
-              className={`ml-2 rounded-full px-2 py-0.5 text-[10px] ${
-                activeTab === tab.id
-                  ? "bg-white/25 text-white"
-                  : "bg-white/10 text-gray-400"
-              }`}
-            >
-              {tab.count}
-            </span>
-          </button>
-        ))}
+            {REPORT_SCOPE_OPTIONS.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          <span className="text-xs text-gray-400">
+            {filteredTransactions.length} transaksi akan dicetak pada laporan {getReportScopeLabel(reportScope).toLowerCase()}.
+          </span>
+        </div>
       </div>
 
       {/* Main Table */}
@@ -300,9 +319,9 @@ export default function LaporanGudangView() {
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/5 px-6 py-4">
           <h2 className="text-lg font-bold text-white">
             Daftar Pergerakan
-            {activeTab !== "semua" && (
+            {reportScope !== "semua" && (
               <span className="ml-2 text-sm font-extrabold text-telkomsat-red">
-                — {getArahLabel(activeTab)}
+                — {getReportScopeLabel(reportScope)}
               </span>
             )}
           </h2>

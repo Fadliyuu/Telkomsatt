@@ -321,6 +321,7 @@ export default function LaporanUmumView() {
                 className="w-full px-4 py-3 border border-telkomsat-gray-lighter rounded-xl focus:ring-2 focus:ring-telkomsat-red focus:border-telkomsat-red outline-none transition-all duration-300 bg-telkomsat-gray-lighter/30 focus:bg-white"
               >
                 <option value="">Semua</option>
+                <option value="IN">Barang Masuk Baru</option>
                 <option value="OUT">Barang Keluar</option>
                 <option value="MOVE">Pindah</option>
                 <option value="RETURN">Kembali</option>
