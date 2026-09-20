@@ -80,27 +80,35 @@ export default function TambahSparepartPage() {
   return (
     <AdminLayout>
       <div className="space-y-6 animate-fade-in">
-        <div className="flex flex-wrap items-center gap-4 animate-slide-in-left">
-          <Link
-            href="/spareparts"
-            className="p-2 hover:bg-telkomsat-gray-lighter rounded-xl transition-colors"
-          >
-            <ArrowLeft className="w-5 h-5 text-telkomsat-black" />
-          </Link>
-          <div>
-            <h1 className="text-4xl font-bold text-telkomsat-black mb-2">
-              Tambah Sparepart
-            </h1>
-            <p className="text-telkomsat-gray text-lg">
-              Tambah item fisik — pilih nama yang sudah ada atau ketik baru
-            </p>
+        <div className="flex flex-col gap-4 animate-slide-in-left sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-3">
+            <Link
+              href="/spareparts"
+              aria-label="Kembali ke Data Sparepart"
+              className="mt-1 rounded-xl border border-telkomsat-gray-lighter p-2.5 text-telkomsat-black transition-colors hover:bg-telkomsat-gray-lighter"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Link>
+            <div>
+              <h1 className="text-4xl font-bold text-telkomsat-black mb-2">
+                Tambah Sparepart
+              </h1>
+              <p className="text-telkomsat-gray text-lg">
+                Tambah item fisik — pilih nama yang sudah ada atau ketik baru
+              </p>
+            </div>
           </div>
           <Link
             href="/spareparts/export-import"
-            className="inline-flex items-center space-x-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-2.5 font-semibold text-white transition-all duration-300 hover:shadow-xl"
+            className="group flex w-full items-center gap-3 rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-left transition-all duration-200 hover:border-blue-300 hover:bg-blue-100 hover:shadow-md sm:w-auto"
           >
-            <FileSpreadsheet className="h-5 w-5" />
-            <span>Import Data</span>
+            <span className="rounded-lg bg-blue-600 p-2 text-white shadow-sm transition-transform duration-200 group-hover:scale-105">
+              <FileSpreadsheet className="h-5 w-5" />
+            </span>
+            <span className="flex flex-col">
+              <span className="font-semibold text-blue-900">Import Data</span>
+              <span className="text-xs text-blue-700">Unggah data dari Excel</span>
+            </span>
           </Link>
         </div>
 
