@@ -44,8 +44,6 @@ const REPORT_SCOPE_OPTIONS: { id: ReportScope; label: string }[] = [
   { id: "semua", label: "Semua Transaksi" },
   { id: "keluar", label: "Barang Keluar" },
   { id: "masuk", label: "Barang Masuk" },
-  { id: "OUT", label: "Sparepart Keluar" },
-  { id: "IN", label: "Sparepart Masuk Baru" },
   { id: "MOVE", label: "Pindah Lokasi" },
   { id: "RETURN", label: "Pengembalian" },
   { id: "DISMANTLE", label: "Dismantle" },
