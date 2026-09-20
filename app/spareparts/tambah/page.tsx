@@ -16,7 +16,7 @@ import {
   ItemStatusValue,
 } from "@/lib/constants/sparepartItem";
 import toast from "react-hot-toast";
-import { ArrowLeft, Save } from "lucide-react";
+import { ArrowLeft, FileSpreadsheet, Save } from "lucide-react";
 import Link from "next/link";
 
 export default function TambahSparepartPage() {
@@ -80,7 +80,7 @@ export default function TambahSparepartPage() {
   return (
     <AdminLayout>
       <div className="space-y-6 animate-fade-in">
-        <div className="flex items-center space-x-4 animate-slide-in-left">
+        <div className="flex flex-wrap items-center gap-4 animate-slide-in-left">
           <Link
             href="/spareparts"
             className="p-2 hover:bg-telkomsat-gray-lighter rounded-xl transition-colors"
@@ -95,6 +95,13 @@ export default function TambahSparepartPage() {
               Tambah item fisik — pilih nama yang sudah ada atau ketik baru
             </p>
           </div>
+          <Link
+            href="/spareparts/export-import"
+            className="inline-flex items-center space-x-2 rounded-xl bg-gradient-to-r from-blue-600 to-blue-700 px-5 py-2.5 font-semibold text-white transition-all duration-300 hover:shadow-xl"
+          >
+            <FileSpreadsheet className="h-5 w-5" />
+            <span>Import Data</span>
+          </Link>
         </div>
 
         <form
