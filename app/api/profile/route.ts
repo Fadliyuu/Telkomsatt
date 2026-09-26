@@ -11,6 +11,8 @@ import { rateLimit, getClientIp } from "@/lib/server/rateLimiter";
 
 const ALLOWED_PROFILE_SIZES = new Set(["sm", "md", "lg"]);
 const USERNAME_PATTERN = /^[a-z0-9][a-z0-9._-]{1,31}$/;
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const RECENT_AUTH_MAX_AGE_SECONDS = 5 * 60;
 
 function cleanString(value: unknown): string | undefined {
   return typeof value === "string" ? value.trim() : undefined;
@@ -35,6 +37,27 @@ export async function PATCH(request: NextRequest) {
     const decoded = await adminAuth().verifyIdToken(token, true);
     const payload = await request.json();
     const updateData: Record<string, unknown> = {};
+
+    const email = cleanString(payload.email)?.toLowerCase();
+    if (email !== undefined) {
+      if (!EMAIL_PATTERN.test(email)) {
+        return badRequestResponse("Format email tidak valid");
+      }
+      const authTime = decoded.auth_time || 0;
+      if (Date.now() / 1000 - authTime > RECENT_AUTH_MAX_AGE_SECONDS) {
+        return badRequestResponse("Masukkan password saat ini sebelum mengganti email");
+      }
+      const existingEmail = await adminDb()
+        .collection("users")
+        .where("email", "==", email)
+        .limit(2)
+        .get();
+      if (existingEmail.docs.some((profile) => profile.id !== decoded.uid)) {
+        return badRequestResponse("Email sudah digunakan");
+      }
+      await adminAuth().updateUser(decoded.uid, { email });
+      updateData.email = email;
+    }
 
     const username = cleanString(payload.username)?.toLowerCase();
     if (username !== undefined) {

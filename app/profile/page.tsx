@@ -7,7 +7,7 @@ import { useAuthStore } from "@/lib/store/useAuthStore";
 import { auth } from "@/lib/firebase/config";
 import { deleteImage, uploadImage } from "@/lib/utils/cloudinary";
 import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
-import { Camera, ImageUp, KeyRound, Loader2, Save, Trash2, UserRound, X } from "lucide-react";
+import { AtSign, Camera, ImageUp, KeyRound, Loader2, Save, Trash2, UserRound, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 type PendingProfilePhoto = {
@@ -37,8 +37,10 @@ export default function ProfilePage() {
     newPassword: "",
     confirmPassword: "",
   });
+  const [emailForm, setEmailForm] = useState({ currentPassword: "", newEmail: "" });
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
+  const [savingEmail, setSavingEmail] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [pendingPhoto, setPendingPhoto] = useState<PendingProfilePhoto | null>(null);
   const [photoZoom, setPhotoZoom] = useState(1);
@@ -69,8 +71,8 @@ export default function ProfilePage() {
     };
   }, [pendingPhoto]);
 
-  const updateProfile = async (payload: Record<string, unknown>) => {
-    const token = await auth.currentUser?.getIdToken();
+  const updateProfile = async (payload: Record<string, unknown>, forceTokenRefresh = false) => {
+    const token = await auth.currentUser?.getIdToken(forceTokenRefresh);
     if (!token) throw new Error("Sesi login tidak valid");
 
     const response = await fetch("/api/profile", {
@@ -358,6 +360,44 @@ export default function ProfilePage() {
     }
   };
 
+  const handleEmailSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    const firebaseUser = auth.currentUser;
+    const newEmail = emailForm.newEmail.trim().toLowerCase();
+    if (!firebaseUser?.email) {
+      toast.error("Sesi login tidak valid");
+      return;
+    }
+    if (!newEmail || !newEmail.includes("@")) {
+      toast.error("Masukkan email baru yang valid");
+      return;
+    }
+    if (newEmail === firebaseUser.email.toLowerCase()) {
+      toast.error("Email baru sama dengan email saat ini");
+      return;
+    }
+
+    setSavingEmail(true);
+    try {
+      const credential = EmailAuthProvider.credential(
+        firebaseUser.email,
+        emailForm.currentPassword
+      );
+      await reauthenticateWithCredential(firebaseUser, credential);
+      await updateProfile({ email: newEmail }, true);
+      setUser({ ...user, email: newEmail, updatedAt: new Date() });
+      setEmailForm({ currentPassword: "", newEmail: "" });
+      toast.success("Email berhasil diganti");
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Gagal mengganti email";
+      toast.error(message);
+    } finally {
+      setSavingEmail(false);
+    }
+  };
+
   return (
     <AdminLayout>
       <div className="space-y-6 animate-fade-in text-white">
@@ -507,6 +547,45 @@ export default function ProfilePage() {
             >
               <KeyRound className="h-4 w-4" />
               {savingPassword ? "Mengganti..." : "Ganti Password"}
+            </button>
+          </form>
+
+          <form onSubmit={handleEmailSubmit} className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl space-y-4">
+            <div className="flex items-center gap-2 border-b border-white/10 pb-3">
+              <AtSign className="h-5 w-5 text-telkomsat-red" />
+              <h2 className="text-lg font-bold text-white">Ganti Email</h2>
+            </div>
+            <p className="text-xs leading-5 text-gray-400">Email baru digunakan untuk reset password dan login dengan email. Username tidak berubah.</p>
+            <p className="rounded-xl border border-white/10 bg-black/10 px-3 py-2 text-xs text-gray-300">Email saat ini: <span className="font-semibold text-white">{user?.email || "-"}</span></p>
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="mb-1.5 block font-bold text-gray-300 uppercase">Email Baru</label>
+                <input
+                  type="email"
+                  placeholder="Masukkan email baru"
+                  value={emailForm.newEmail}
+                  onChange={(e) => setEmailForm({ ...emailForm, newEmail: e.target.value })}
+                  className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20 placeholder-gray-400"
+                />
+              </div>
+              <div>
+                <label className="mb-1.5 block font-bold text-gray-300 uppercase">Password Saat Ini</label>
+                <input
+                  type="password"
+                  placeholder="Konfirmasi password Anda"
+                  value={emailForm.currentPassword}
+                  onChange={(e) => setEmailForm({ ...emailForm, currentPassword: e.target.value })}
+                  className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20 placeholder-gray-400"
+                />
+              </div>
+            </div>
+            <button
+              type="submit"
+              disabled={savingEmail}
+              className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-telkomsat-red to-telkomsat-red-dark px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-red-600/30 transition-all hover:scale-105 disabled:opacity-50"
+            >
+              <AtSign className="h-4 w-4" />
+              {savingEmail ? "Mengganti..." : "Ganti Email"}
             </button>
           </form>
         </div>
