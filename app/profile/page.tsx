@@ -6,8 +6,23 @@ import UserAvatar from "@/components/UserAvatar";
 import { useAuthStore } from "@/lib/store/useAuthStore";
 import { auth } from "@/lib/firebase/config";
 import { deleteImage, uploadImage } from "@/lib/utils/cloudinary";
-import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
-import { AtSign, Camera, ImageUp, KeyRound, Loader2, Save, Trash2, UserRound, X } from "lucide-react";
+import {
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updateEmail,
+  updatePassword,
+} from "firebase/auth";
+import {
+  AtSign,
+  Camera,
+  ImageUp,
+  KeyRound,
+  Loader2,
+  Save,
+  Trash2,
+  UserRound,
+  X,
+} from "lucide-react";
 import toast from "react-hot-toast";
 
 type PendingProfilePhoto = {
@@ -37,12 +52,17 @@ export default function ProfilePage() {
     newPassword: "",
     confirmPassword: "",
   });
-  const [emailForm, setEmailForm] = useState({ currentPassword: "", newEmail: "" });
+  const [emailForm, setEmailForm] = useState({
+    currentPassword: "",
+    newEmail: "",
+  });
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
   const [savingEmail, setSavingEmail] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [pendingPhoto, setPendingPhoto] = useState<PendingProfilePhoto | null>(null);
+  const [pendingPhoto, setPendingPhoto] = useState<PendingProfilePhoto | null>(
+    null,
+  );
   const [photoZoom, setPhotoZoom] = useState(1);
   const [photoOffsetX, setPhotoOffsetX] = useState(0);
   const [photoOffsetY, setPhotoOffsetY] = useState(0);
@@ -71,7 +91,10 @@ export default function ProfilePage() {
     };
   }, [pendingPhoto]);
 
-  const updateProfile = async (payload: Record<string, unknown>, forceTokenRefresh = false) => {
+  const updateProfile = async (
+    payload: Record<string, unknown>,
+    forceTokenRefresh = false,
+  ) => {
     const token = await auth.currentUser?.getIdToken(forceTokenRefresh);
     if (!token) throw new Error("Sesi login tidak valid");
 
@@ -110,7 +133,8 @@ export default function ProfilePage() {
       setUser({ ...user, ...payload, updatedAt: new Date() });
       toast.success("Profil berhasil diperbarui");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Gagal memperbarui profil";
+      const message =
+        error instanceof Error ? error.message : "Gagal memperbarui profil";
       toast.error(message);
     } finally {
       setSavingProfile(false);
@@ -156,7 +180,9 @@ export default function ProfilePage() {
     };
   };
 
-  const handlePhotoPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handlePhotoPointerDown = (
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
     if (event.pointerType === "touch" && event.isPrimary === false) return;
     event.currentTarget.setPointerCapture(event.pointerId);
     photoDragRef.current = {
@@ -168,7 +194,9 @@ export default function ProfilePage() {
     };
   };
 
-  const handlePhotoPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+  const handlePhotoPointerMove = (
+    event: React.PointerEvent<HTMLDivElement>,
+  ) => {
     const dragState = photoDragRef.current;
     if (!dragState.dragging || dragState.pointerId !== event.pointerId) return;
 
@@ -199,7 +227,10 @@ export default function ProfilePage() {
   const getTouchDistance = (touches: React.TouchList) => {
     const first = touches[0];
     const second = touches[1];
-    return Math.hypot(first.clientX - second.clientX, first.clientY - second.clientY);
+    return Math.hypot(
+      first.clientX - second.clientX,
+      first.clientY - second.clientY,
+    );
   };
 
   const handlePhotoTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
@@ -240,7 +271,10 @@ export default function ProfilePage() {
     context.fillStyle = "#ffffff";
     context.fillRect(0, 0, size, size);
 
-    const baseScale = Math.max(size / image.naturalWidth, size / image.naturalHeight);
+    const baseScale = Math.max(
+      size / image.naturalWidth,
+      size / image.naturalHeight,
+    );
     const scale = baseScale * photoZoom;
     const width = image.naturalWidth * scale;
     const height = image.naturalHeight * scale;
@@ -256,7 +290,7 @@ export default function ProfilePage() {
           else reject(new Error("Gagal memproses gambar"));
         },
         "image/jpeg",
-        0.9
+        0.9,
       );
     });
 
@@ -270,7 +304,10 @@ export default function ProfilePage() {
     try {
       const previousPublicId = user.fotoProfilPublicId;
       const editedFile = await createEditedProfilePhoto();
-      const result = await uploadImage(editedFile, "inventaris-sparepart/profile");
+      const result = await uploadImage(
+        editedFile,
+        "inventaris-sparepart/profile",
+      );
       const payload = {
         fotoProfilUrl: result.url,
         fotoProfilPublicId: result.publicId,
@@ -291,7 +328,8 @@ export default function ProfilePage() {
       toast.success("Foto profil berhasil diperbarui");
       closePhotoEditor();
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Gagal mengunggah foto profil";
+      const message =
+        error instanceof Error ? error.message : "Gagal mengunggah foto profil";
       toast.error(message);
     } finally {
       setUploadingPhoto(false);
@@ -319,7 +357,8 @@ export default function ProfilePage() {
       }
       toast.success("Foto profil dihapus");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Gagal menghapus foto profil";
+      const message =
+        error instanceof Error ? error.message : "Gagal menghapus foto profil";
       toast.error(message);
     } finally {
       setUploadingPhoto(false);
@@ -346,14 +385,19 @@ export default function ProfilePage() {
     try {
       const credential = EmailAuthProvider.credential(
         firebaseUser.email,
-        passwordForm.currentPassword
+        passwordForm.currentPassword,
       );
       await reauthenticateWithCredential(firebaseUser, credential);
       await updatePassword(firebaseUser, passwordForm.newPassword);
-      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
       toast.success("Password berhasil diganti");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Gagal mengganti password";
+      const message =
+        error instanceof Error ? error.message : "Gagal mengganti password";
       toast.error(message);
     } finally {
       setSavingPassword(false);
@@ -383,15 +427,17 @@ export default function ProfilePage() {
     try {
       const credential = EmailAuthProvider.credential(
         firebaseUser.email,
-        emailForm.currentPassword
+        emailForm.currentPassword,
       );
       await reauthenticateWithCredential(firebaseUser, credential);
+      await updateEmail(firebaseUser, newEmail);
       await updateProfile({ email: newEmail }, true);
       setUser({ ...user, email: newEmail, updatedAt: new Date() });
       setEmailForm({ currentPassword: "", newEmail: "" });
       toast.success("Email berhasil diganti");
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Gagal mengganti email";
+      const message =
+        error instanceof Error ? error.message : "Gagal mengganti email";
       toast.error(message);
     } finally {
       setSavingEmail(false);
@@ -402,18 +448,29 @@ export default function ProfilePage() {
     <AdminLayout>
       <div className="space-y-6 animate-fade-in text-white">
         <div className="border-b border-white/10 pb-5">
-          <h1 className="text-3xl font-extrabold text-white tracking-tight mb-1">Profil Pengguna</h1>
-          <p className="text-sm text-gray-400">Kelola data diri, foto profil, dan keamanan akun Anda.</p>
+          <h1 className="text-3xl font-extrabold text-white tracking-tight mb-1">
+            Profil Pengguna
+          </h1>
+          <p className="text-sm text-gray-400">
+            Kelola data diri, foto profil, dan keamanan akun Anda.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-          <form onSubmit={handleProfileSubmit} className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl space-y-4">
+          <form
+            onSubmit={handleProfileSubmit}
+            className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl space-y-4"
+          >
             <div className="flex items-center gap-2 border-b border-white/10 pb-3">
               <UserRound className="h-5 w-5 text-telkomsat-red" />
               <h2 className="text-lg font-bold text-white">Data Profil</h2>
             </div>
             <div className="flex flex-col gap-4 rounded-xl border border-white/10 bg-white/5 p-4 sm:flex-row sm:items-center">
-              <UserAvatar name={user?.nama} src={user?.fotoProfilUrl} size="xl" />
+              <UserAvatar
+                name={user?.nama}
+                src={user?.fotoProfilUrl}
+                size="xl"
+              />
               <div className="flex-1">
                 <p className="font-bold text-white">Foto Profil</p>
                 <p className="mt-1 text-xs text-gray-400">
@@ -456,39 +513,61 @@ export default function ProfilePage() {
             </div>
             <div className="space-y-4 text-xs">
               <div>
-                <label className="mb-1.5 block font-bold text-gray-300 uppercase">Nama Lengkap</label>
+                <label className="mb-1.5 block font-bold text-gray-300 uppercase">
+                  Nama Lengkap
+                </label>
                 <input
                   value={profile.nama}
-                  onChange={(e) => setProfile({ ...profile, nama: e.target.value })}
+                  onChange={(e) =>
+                    setProfile({ ...profile, nama: e.target.value })
+                  }
                   className="w-full rounded-xl border border-white/15 bg-white/5 text-white px-4 py-3 outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block font-bold text-gray-300 uppercase">Username</label>
+                <label className="mb-1.5 block font-bold text-gray-300 uppercase">
+                  Username
+                </label>
                 <input
                   value={profile.username}
-                  onChange={(e) => setProfile({ ...profile, username: e.target.value.toLowerCase() })}
+                  onChange={(e) =>
+                    setProfile({
+                      ...profile,
+                      username: e.target.value.toLowerCase(),
+                    })
+                  }
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
                   className="w-full rounded-xl border border-white/15 bg-white/5 text-white px-4 py-3 outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20"
                 />
-                <p className="mt-1.5 text-[11px] text-gray-400">Dipakai untuk login. Gunakan 2-32 huruf kecil, angka, titik, garis bawah, atau strip.</p>
+                <p className="mt-1.5 text-[11px] text-gray-400">
+                  Dipakai untuk login. Gunakan 2-32 huruf kecil, angka, titik,
+                  garis bawah, atau strip.
+                </p>
               </div>
               <div>
-                <label className="mb-1.5 block font-bold text-gray-300 uppercase">Nomor HP / WhatsApp</label>
+                <label className="mb-1.5 block font-bold text-gray-300 uppercase">
+                  Nomor HP / WhatsApp
+                </label>
                 <input
                   value={profile.nomorHP}
-                  onChange={(e) => setProfile({ ...profile, nomorHP: e.target.value })}
+                  onChange={(e) =>
+                    setProfile({ ...profile, nomorHP: e.target.value })
+                  }
                   className="w-full rounded-xl border border-white/15 bg-white/5 text-white px-4 py-3 outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block font-bold text-gray-300 uppercase">Alamat Domisili / Tugas</label>
+                <label className="mb-1.5 block font-bold text-gray-300 uppercase">
+                  Alamat Domisili / Tugas
+                </label>
                 <textarea
                   value={profile.alamat}
                   rows={4}
-                  onChange={(e) => setProfile({ ...profile, alamat: e.target.value })}
+                  onChange={(e) =>
+                    setProfile({ ...profile, alamat: e.target.value })
+                  }
                   className="w-full resize-none rounded-xl border border-white/15 bg-white/5 text-white px-4 py-3 outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20"
                 />
               </div>
@@ -503,39 +582,65 @@ export default function ProfilePage() {
             </button>
           </form>
 
-          <form onSubmit={handlePasswordSubmit} className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl space-y-4">
+          <form
+            onSubmit={handlePasswordSubmit}
+            className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl space-y-4"
+          >
             <div className="flex items-center gap-2 border-b border-white/10 pb-3">
               <KeyRound className="h-5 w-5 text-telkomsat-red" />
-              <h2 className="text-lg font-bold text-white">Ganti Password Sesi</h2>
+              <h2 className="text-lg font-bold text-white">
+                Ganti Password Sesi
+              </h2>
             </div>
             <div className="space-y-4 text-xs">
               <div>
-                <label className="mb-1.5 block font-bold text-gray-300 uppercase">Password Lama</label>
+                <label className="mb-1.5 block font-bold text-gray-300 uppercase">
+                  Password Lama
+                </label>
                 <input
                   type="password"
                   placeholder="Masukkan password saat ini"
                   value={passwordForm.currentPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                  onChange={(e) =>
+                    setPasswordForm({
+                      ...passwordForm,
+                      currentPassword: e.target.value,
+                    })
+                  }
                   className="w-full rounded-xl border border-white/15 bg-white/5 text-white px-4 py-3 outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20 placeholder-gray-400"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block font-bold text-gray-300 uppercase">Password Baru</label>
+                <label className="mb-1.5 block font-bold text-gray-300 uppercase">
+                  Password Baru
+                </label>
                 <input
                   type="password"
                   placeholder="Minimal 6 karakter"
                   value={passwordForm.newPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                  onChange={(e) =>
+                    setPasswordForm({
+                      ...passwordForm,
+                      newPassword: e.target.value,
+                    })
+                  }
                   className="w-full rounded-xl border border-white/15 bg-white/5 text-white px-4 py-3 outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20 placeholder-gray-400"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block font-bold text-gray-300 uppercase">Konfirmasi Password Baru</label>
+                <label className="mb-1.5 block font-bold text-gray-300 uppercase">
+                  Konfirmasi Password Baru
+                </label>
                 <input
                   type="password"
                   placeholder="Ulangi password baru"
                   value={passwordForm.confirmPassword}
-                  onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                  onChange={(e) =>
+                    setPasswordForm({
+                      ...passwordForm,
+                      confirmPassword: e.target.value,
+                    })
+                  }
                   className="w-full rounded-xl border border-white/15 bg-white/5 text-white px-4 py-3 outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20 placeholder-gray-400"
                 />
               </div>
@@ -550,31 +655,53 @@ export default function ProfilePage() {
             </button>
           </form>
 
-          <form onSubmit={handleEmailSubmit} className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl space-y-4">
+          <form
+            onSubmit={handleEmailSubmit}
+            className="rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl backdrop-blur-xl space-y-4"
+          >
             <div className="flex items-center gap-2 border-b border-white/10 pb-3">
               <AtSign className="h-5 w-5 text-telkomsat-red" />
               <h2 className="text-lg font-bold text-white">Ganti Email</h2>
             </div>
-            <p className="text-xs leading-5 text-gray-400">Email baru digunakan untuk reset password dan login dengan email. Username tidak berubah.</p>
-            <p className="rounded-xl border border-white/10 bg-black/10 px-3 py-2 text-xs text-gray-300">Email saat ini: <span className="font-semibold text-white">{user?.email || "-"}</span></p>
+            <p className="text-xs leading-5 text-gray-400">
+              Email baru digunakan untuk reset password dan login dengan email.
+              Username tidak berubah.
+            </p>
+            <p className="rounded-xl border border-white/10 bg-black/10 px-3 py-2 text-xs text-gray-300">
+              Email saat ini:{" "}
+              <span className="font-semibold text-white">
+                {user?.email || "-"}
+              </span>
+            </p>
             <div className="space-y-4 text-xs">
               <div>
-                <label className="mb-1.5 block font-bold text-gray-300 uppercase">Email Baru</label>
+                <label className="mb-1.5 block font-bold text-gray-300 uppercase">
+                  Email Baru
+                </label>
                 <input
                   type="email"
                   placeholder="Masukkan email baru"
                   value={emailForm.newEmail}
-                  onChange={(e) => setEmailForm({ ...emailForm, newEmail: e.target.value })}
+                  onChange={(e) =>
+                    setEmailForm({ ...emailForm, newEmail: e.target.value })
+                  }
                   className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20 placeholder-gray-400"
                 />
               </div>
               <div>
-                <label className="mb-1.5 block font-bold text-gray-300 uppercase">Password Saat Ini</label>
+                <label className="mb-1.5 block font-bold text-gray-300 uppercase">
+                  Password Saat Ini
+                </label>
                 <input
                   type="password"
                   placeholder="Konfirmasi password Anda"
                   value={emailForm.currentPassword}
-                  onChange={(e) => setEmailForm({ ...emailForm, currentPassword: e.target.value })}
+                  onChange={(e) =>
+                    setEmailForm({
+                      ...emailForm,
+                      currentPassword: e.target.value,
+                    })
+                  }
                   className="w-full rounded-xl border border-white/15 bg-white/5 px-4 py-3 text-white outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20 placeholder-gray-400"
                 />
               </div>
@@ -637,7 +764,8 @@ export default function ProfilePage() {
                   />
                 </div>
                 <p className="text-center text-xs text-telkomsat-gray">
-                  Drag foto untuk menggeser, scroll untuk zoom, atau pinch dua jari di layar sentuh.
+                  Drag foto untuk menggeser, scroll untuk zoom, atau pinch dua
+                  jari di layar sentuh.
                 </p>
 
                 <div className="space-y-4">

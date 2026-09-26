@@ -12,7 +12,6 @@ import { rateLimit, getClientIp } from "@/lib/server/rateLimiter";
 const ALLOWED_PROFILE_SIZES = new Set(["sm", "md", "lg"]);
 const USERNAME_PATTERN = /^[a-z0-9][a-z0-9._-]{1,31}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const RECENT_AUTH_MAX_AGE_SECONDS = 5 * 60;
 
 function cleanString(value: unknown): string | undefined {
   return typeof value === "string" ? value.trim() : undefined;
@@ -20,17 +19,25 @@ function cleanString(value: unknown): string | undefined {
 
 export async function PATCH(request: NextRequest) {
   // Rate limit: 20 profile updates per minute per IP
-  const rl = rateLimit(`profile:${getClientIp(request)}`, { limit: 20, windowMs: 60_000 });
+  const rl = rateLimit(`profile:${getClientIp(request)}`, {
+    limit: 20,
+    windowMs: 60_000,
+  });
   if (!rl.allowed) {
     return new Response(
-      JSON.stringify({ success: false, error: "Terlalu banyak permintaan. Coba lagi nanti." }),
-      { status: 429, headers: { "Content-Type": "application/json" } }
+      JSON.stringify({
+        success: false,
+        error: "Terlalu banyak permintaan. Coba lagi nanti.",
+      }),
+      { status: 429, headers: { "Content-Type": "application/json" } },
     );
   }
 
   try {
     const authHeader = request.headers.get("authorization");
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+    const token = authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7)
+      : null;
 
     if (!token) return unauthorizedResponse();
 
@@ -43,9 +50,10 @@ export async function PATCH(request: NextRequest) {
       if (!EMAIL_PATTERN.test(email)) {
         return badRequestResponse("Format email tidak valid");
       }
-      const authTime = decoded.auth_time || 0;
-      if (Date.now() / 1000 - authTime > RECENT_AUTH_MAX_AGE_SECONDS) {
-        return badRequestResponse("Masukkan password saat ini sebelum mengganti email");
+      if (decoded.email?.toLowerCase() !== email) {
+        return badRequestResponse(
+          "Email belum terverifikasi oleh Firebase Authentication",
+        );
       }
       const existingEmail = await adminDb()
         .collection("users")
@@ -55,7 +63,6 @@ export async function PATCH(request: NextRequest) {
       if (existingEmail.docs.some((profile) => profile.id !== decoded.uid)) {
         return badRequestResponse("Email sudah digunakan");
       }
-      await adminAuth().updateUser(decoded.uid, { email });
       updateData.email = email;
     }
 
@@ -63,7 +70,7 @@ export async function PATCH(request: NextRequest) {
     if (username !== undefined) {
       if (!USERNAME_PATTERN.test(username)) {
         return badRequestResponse(
-          "Username terdiri dari 2-32 huruf kecil, angka, titik, garis bawah, atau strip"
+          "Username terdiri dari 2-32 huruf kecil, angka, titik, garis bawah, atau strip",
         );
       }
       const existingUser = await adminDb()
@@ -80,7 +87,8 @@ export async function PATCH(request: NextRequest) {
     const nama = cleanString(payload.nama);
     if (nama !== undefined) {
       if (nama.length < 2) return badRequestResponse("Nama minimal 2 karakter");
-      if (nama.length > 100) return badRequestResponse("Nama maksimal 100 karakter");
+      if (nama.length > 100)
+        return badRequestResponse("Nama maksimal 100 karakter");
       updateData.nama = nama;
     }
 
@@ -94,12 +102,15 @@ export async function PATCH(request: NextRequest) {
     if (fotoProfilUrl !== undefined) updateData.fotoProfilUrl = fotoProfilUrl;
 
     const fotoProfilPublicId = cleanString(payload.fotoProfilPublicId);
-    if (fotoProfilPublicId !== undefined) updateData.fotoProfilPublicId = fotoProfilPublicId;
+    if (fotoProfilPublicId !== undefined)
+      updateData.fotoProfilPublicId = fotoProfilPublicId;
 
     const fotoProfilSize = cleanString(payload.fotoProfilSize);
     if (fotoProfilSize !== undefined) {
       if (!ALLOWED_PROFILE_SIZES.has(fotoProfilSize)) {
-        return badRequestResponse("Ukuran foto profil tidak valid (gunakan: sm, md, lg)");
+        return badRequestResponse(
+          "Ukuran foto profil tidak valid (gunakan: sm, md, lg)",
+        );
       }
       updateData.fotoProfilSize = fotoProfilSize;
     }
