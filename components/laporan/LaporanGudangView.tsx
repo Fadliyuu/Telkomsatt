@@ -145,6 +145,12 @@ export default function LaporanGudangView() {
   };
 
   const handleConfirmExport = async (recipient: PdfRecipient) => {
+    if (!user) {
+      setRecipientModalOpen(false);
+      toast.error("Data pengguna tidak tersedia");
+      return;
+    }
+
     setRecipientModalOpen(false);
     try {
       await downloadLaporanGudangPdf({
