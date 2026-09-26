@@ -3,7 +3,25 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { QrCode, ShoppingCart, LogIn, Package, Camera, X, Trash2, AlertTriangle, CheckCircle, ArrowRight, Loader2, PlusCircle, Plus, Image as ImageIcon, ChevronDown, ChevronUp, MapPin } from "lucide-react";
+import {
+  QrCode,
+  ShoppingCart,
+  LogIn,
+  Package,
+  Camera,
+  X,
+  Trash2,
+  AlertTriangle,
+  CheckCircle,
+  ArrowRight,
+  Loader2,
+  PlusCircle,
+  Plus,
+  Image as ImageIcon,
+  ChevronDown,
+  ChevronUp,
+  MapPin,
+} from "lucide-react";
 import ImageUpload from "@/components/ImageUpload";
 import { useCartStore } from "@/lib/store/useCartStore";
 import { useAuthStore } from "@/lib/store/useAuthStore";
@@ -59,57 +77,96 @@ function getFoundItemLocation(item: SparepartItem | Sparepart): string {
 
 export default function ScanHomePage() {
   const router = useRouter();
-  const { items, addItem, updateItem, removeItem, namaTeknisi, sessionToken, initSession, clearCart, clearSession } = useCartStore();
+  const {
+    items,
+    addItem,
+    updateItem,
+    removeItem,
+    namaTeknisi,
+    sessionToken,
+    initSession,
+    clearCart,
+    clearSession,
+  } = useCartStore();
   const { user } = useAuthStore();
   const [showScanner, setShowScanner] = useState(false);
   const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
   const [showTechForm, setShowTechForm] = useState(false);
   const [techName, setTechName] = useState("");
-  const [techType, setTechType] = useState<"freelance" | "karyawan" | "vendor">("karyawan");
-  const [defaultAction, setDefaultAction] = useState<"MOVE" | "DAMAGE" | "FOUND" | "DISMANTLE">("MOVE");
-  
+  const [techType, setTechType] = useState<"freelance" | "karyawan" | "vendor">(
+    "karyawan",
+  );
+  const [defaultAction, setDefaultAction] = useState<
+    "MOVE" | "DAMAGE" | "FOUND" | "DISMANTLE"
+  >("MOVE");
+
   // Preset kondisi & lokasi default untuk barang masuk (Dismantle & Found)
-  const [defaultIncomingCondition, setDefaultIncomingCondition] = useState<"Bagus" | "Rusak" | "Tidak Diketahui">("Bagus");
-  const [defaultIncomingLocation, setDefaultIncomingLocation] = useState<string>("Gudang Regional 6");
-  
+  const [defaultIncomingCondition, setDefaultIncomingCondition] = useState<
+    "Bagus" | "Rusak" | "Tidak Diketahui"
+  >("Bagus");
+  const [defaultIncomingLocation, setDefaultIncomingLocation] =
+    useState<string>("Gudang Regional 6");
+
   const [showDismantleForm, setShowDismantleForm] = useState(false);
   const [dismantleItemId, setDismantleItemId] = useState<string | null>(null);
-  const [kondisiDismantle, setKondisiDismantle] = useState<"Rusak" | "Bagus">("Bagus");
-  
+  const [kondisiDismantle, setKondisiDismantle] = useState<"Rusak" | "Bagus">(
+    "Bagus",
+  );
+
   // State untuk konfirmasi lokasi barang ditemukan
   const [showFoundConfirm, setShowFoundConfirm] = useState(false);
-  const [foundItemData, setFoundItemData] = useState<FoundItemData | null>(null);
+  const [foundItemData, setFoundItemData] = useState<FoundItemData | null>(
+    null,
+  );
   const [foundLokasi, setFoundLokasi] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastScannedId, setLastScannedId] = useState<string | null>(null);
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualItemId, setManualItemId] = useState("");
-  const [manualSuggestions, setManualSuggestions] = useState<SparepartItem[]>([]);
+  const [manualSuggestions, setManualSuggestions] = useState<SparepartItem[]>(
+    [],
+  );
   const [manualSearching, setManualSearching] = useState(false);
-  
+
   // Quick Add states - multi-item support
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickAddData, setQuickAddData] = useState<QuickAddFormData>({
     lokasiTujuan: "",
-    items: [{ id: "1", namaPerangkat: "", serialNumber: "", tagging: "", fotoUrls: [] }],
+    items: [
+      {
+        id: "1",
+        namaPerangkat: "",
+        serialNumber: "",
+        tagging: "",
+        fotoUrls: [],
+      },
+    ],
   });
   const [quickAddLoading, setQuickAddLoading] = useState(false);
   const [expandedItems, setExpandedItems] = useState<string[]>(["1"]); // Track which items are expanded
 
   // Unrecognized QR modal states
   const [showUnrecognizedModal, setShowUnrecognizedModal] = useState(false);
-  const [unrecognizedScannedId, setUnrecognizedScannedId] = useState<string>("");
+  const [unrecognizedScannedId, setUnrecognizedScannedId] =
+    useState<string>("");
 
   // Generate unique ID for new quick add items
-  const generateQuickAddId = () => `qa-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const generateQuickAddId = () =>
+    `qa-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
   useEffect(() => {
     if (user && user.role !== "teknisi") {
       router.replace(
         user.role === "admin_gudang"
           ? "/scan/gudang"
-          : getDefaultPath(user.role)
+          : getDefaultPath(user.role),
       );
+      return;
+    }
+
+    if (user?.role === "teknisi" && user.nama && namaTeknisi !== user.nama) {
+      clearSession();
+      initSession(user.nama, "karyawan");
       return;
     }
 
@@ -122,7 +179,7 @@ export default function ScanHomePage() {
         setShowTechForm(true);
       }
     }
-  }, [user, sessionToken, namaTeknisi, initSession, router]);
+  }, [user, sessionToken, namaTeknisi, initSession, clearSession, router]);
 
   // Sync scanned items with cart
   useEffect(() => {
@@ -206,7 +263,7 @@ export default function ScanHomePage() {
             actionType: item.jenisAksi,
             cartItemId: item.id,
           } as ScannedItem;
-        })
+        }),
       );
 
       setScannedItems(itemsData);
@@ -230,13 +287,15 @@ export default function ScanHomePage() {
     setShowManualInput(true);
   };
 
-  const handleManualInputSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleManualInputSubmit = async (
+    e: React.FormEvent<HTMLFormElement>,
+  ) => {
     e.preventDefault();
     if (!manualItemId.trim()) {
       toast.error("ID item wajib diisi");
       return;
     }
-    
+
     const item = await resolveSparepartItemIdentifier(manualItemId.trim());
     if (!item) {
       toast.error("Item tidak ditemukan dari ID, SN, atau tagging");
@@ -268,13 +327,13 @@ export default function ScanHomePage() {
     console.log("handleAddItem called with:", itemId);
     console.log("Current session:", { sessionToken, namaTeknisi });
     console.log("Current items:", items);
-    
+
     // Prevent duplicate rapid scans
     if (isProcessing) {
       console.log("Already processing, skipping");
       return false;
     }
-    
+
     if (itemId === lastScannedId) {
       console.log("Same item scanned recently, skipping");
       toast("Item sudah di-scan baru-baru ini", { icon: "ℹ️", duration: 1000 });
@@ -290,9 +349,7 @@ export default function ScanHomePage() {
     }
 
     // Check if already in cart
-    const exists = items.find(
-      (item) => item.idSparepart === itemId
-    );
+    const exists = items.find((item) => item.idSparepart === itemId);
 
     if (exists) {
       console.log("Item already in cart");
@@ -305,7 +362,7 @@ export default function ScanHomePage() {
 
     try {
       console.log("Verifying item in database...");
-      
+
       // Verify item exists in database
       let itemData: SparepartItem | Sparepart | null = null;
       let itemName = "";
@@ -345,17 +402,25 @@ export default function ScanHomePage() {
           return false;
         } else {
           // Tambahkan langsung ke keranjang dengan kondisi & lokasi default tanpa modal pemblokir multi-scan
-          addItem(itemId, "FOUND", defaultIncomingLocation, undefined, defaultIncomingCondition);
+          addItem(
+            itemId,
+            "FOUND",
+            defaultIncomingLocation,
+            undefined,
+            defaultIncomingCondition,
+          );
           toast.success(
             `✓ Ditemukan: ${itemName} (${defaultIncomingCondition}) → ${defaultIncomingLocation}`,
-            { duration: 2500, icon: "✅" }
+            { duration: 2500, icon: "✅" },
           );
           return true;
         }
       }
 
       if (!itemData) {
-        console.log("Item not found in any collection, showing unrecognized QR modal");
+        console.log(
+          "Item not found in any collection, showing unrecognized QR modal",
+        );
         setUnrecognizedScannedId(itemId);
         setShowUnrecognizedModal(true);
         return false;
@@ -364,10 +429,15 @@ export default function ScanHomePage() {
       // Handle DISMANTLE - barang bongkaran masuk kembali ke gudang/base
       if (defaultAction === "DISMANTLE") {
         // Tambahkan langsung ke keranjang dengan kondisi & lokasi default tanpa modal pemblokir multi-scan
-        addItem(itemId, "DISMANTLE", defaultIncomingLocation, defaultIncomingCondition);
+        addItem(
+          itemId,
+          "DISMANTLE",
+          defaultIncomingLocation,
+          defaultIncomingCondition,
+        );
         toast.success(
           `✓ Dismantle: ${itemName} (${defaultIncomingCondition}) → ${defaultIncomingLocation}`,
-          { duration: 2500, icon: "🔧" }
+          { duration: 2500, icon: "🔧" },
         );
         return true;
       }
@@ -375,15 +445,12 @@ export default function ScanHomePage() {
       // Add to cart for MOVE or DAMAGE
       console.log("Adding to cart:", itemId, defaultAction);
       addItem(itemId, defaultAction);
-      
+
       const actionLabel = defaultAction === "MOVE" ? "Bawa" : "Rusak";
-      toast.success(
-        `✓ Item ditambahkan! ${itemName} (${actionLabel})`,
-        { 
-          duration: 2500,
-          icon: defaultAction === "MOVE" ? "📦" : "⚠️"
-        }
-      );
+      toast.success(`✓ Item ditambahkan! ${itemName} (${actionLabel})`, {
+        duration: 2500,
+        icon: defaultAction === "MOVE" ? "📦" : "⚠️",
+      });
 
       console.log("Item added successfully");
       return true;
@@ -411,7 +478,7 @@ export default function ScanHomePage() {
   // Handle konfirmasi lokasi barang ditemukan
   const handleConfirmFound = () => {
     if (!foundItemData) return;
-    
+
     if (!foundLokasi.trim()) {
       toast.error("Lokasi ditemukan wajib diisi");
       return;
@@ -419,18 +486,18 @@ export default function ScanHomePage() {
 
     // Add to cart with FOUND action and location
     addItem(foundItemData.id, "FOUND", foundLokasi.trim());
-    
+
     toast.success(
       `✅ Barang Ditemukan! ${foundItemData.nama} - Lokasi: ${foundLokasi}`,
-      { 
+      {
         duration: 4000,
         icon: "✅",
         style: {
           background: "#f0fdf4",
           border: "1px solid #86efac",
           borderRadius: "12px",
-        }
-      }
+        },
+      },
     );
 
     // Close modal
@@ -445,7 +512,8 @@ export default function ScanHomePage() {
 
     // Check if already in cart
     const exists = items.find(
-      (item) => item.idSparepart === dismantleItemId && item.jenisAksi === "DISMANTLE"
+      (item) =>
+        item.idSparepart === dismantleItemId && item.jenisAksi === "DISMANTLE",
     );
 
     if (exists) {
@@ -457,19 +525,16 @@ export default function ScanHomePage() {
 
     // Add to cart with DISMANTLE action and condition
     addItem(dismantleItemId, "DISMANTLE", undefined, kondisiDismantle);
-    
-    toast.success(
-      `🔧 Barang Dismantle! Kondisi: ${kondisiDismantle}`,
-      { 
-        duration: 3000,
-        icon: "🔧",
-        style: {
-          background: "#fff7ed",
-          border: "1px solid #fdba74",
-          borderRadius: "12px",
-        }
-      }
-    );
+
+    toast.success(`🔧 Barang Dismantle! Kondisi: ${kondisiDismantle}`, {
+      duration: 3000,
+      icon: "🔧",
+      style: {
+        background: "#fff7ed",
+        border: "1px solid #fdba74",
+        borderRadius: "12px",
+      },
+    });
 
     // Close modal
     setShowDismantleForm(false);
@@ -480,7 +545,7 @@ export default function ScanHomePage() {
   // Quick Add handler - untuk menambahkan multiple items yang belum terdata
   const handleQuickAddSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    
+
     // Validate lokasi tujuan
     if (!quickAddData.lokasiTujuan.trim()) {
       toast.error("Lokasi tujuan wajib diisi");
@@ -488,7 +553,9 @@ export default function ScanHomePage() {
     }
 
     // Validate at least one item with nama perangkat
-    const validItems = quickAddData.items.filter(item => item.namaPerangkat.trim());
+    const validItems = quickAddData.items.filter((item) =>
+      item.namaPerangkat.trim(),
+    );
     if (validItems.length === 0) {
       toast.error("Minimal satu item dengan nama perangkat harus diisi");
       return;
@@ -512,7 +579,7 @@ export default function ScanHomePage() {
             cariFisik: isFound ? "Sesuai" : "Outstanding",
             lokasiSaatIni: quickAddData.lokasiTujuan.trim(),
             status: isFound ? "Tersedia" : "Digunakan",
-            keterangan: isFound 
+            keterangan: isFound
               ? `Barang ditemukan oleh teknisi: ${namaTeknisi}. Lokasi ditemukan: ${quickAddData.lokasiTujuan}`
               : `Ditambahkan oleh teknisi: ${namaTeknisi}. Lokasi tujuan: ${quickAddData.lokasiTujuan}`,
             ditambahkanOleh: namaTeknisi || "Unknown",
@@ -523,7 +590,8 @@ export default function ScanHomePage() {
             requestedAction: defaultAction,
             requestedLocation: quickAddData.lokasiTujuan.trim(),
             requestNote: `Diajukan teknisi dari quick add untuk aksi ${defaultAction}`,
-            requestFotoUrl: item.fotoUrls.length > 0 ? item.fotoUrls : undefined,
+            requestFotoUrl:
+              item.fotoUrls.length > 0 ? item.fotoUrls : undefined,
             perluVerifikasi: true,
             fotoUrl: item.fotoUrls.length > 0 ? item.fotoUrls : undefined,
           });
@@ -538,10 +606,10 @@ export default function ScanHomePage() {
         const failMsg = failedCount > 0 ? ` (${failedCount} gagal)` : "";
         toast.success(
           `✓ ${successCount} item berhasil ditambahkan!${failMsg} Item akan diverifikasi oleh Admin`,
-          { 
+          {
             duration: 4000,
-            icon: "📦"
-          }
+            icon: "📦",
+          },
         );
       }
 
@@ -552,11 +620,18 @@ export default function ScanHomePage() {
       // Reset form dan tutup modal
       setQuickAddData({
         lokasiTujuan: "",
-        items: [{ id: generateQuickAddId(), namaPerangkat: "", serialNumber: "", tagging: "", fotoUrls: [] }],
+        items: [
+          {
+            id: generateQuickAddId(),
+            namaPerangkat: "",
+            serialNumber: "",
+            tagging: "",
+            fotoUrls: [],
+          },
+        ],
       });
       setExpandedItems(["1"]);
       setShowQuickAdd(false);
-
     } catch (error: unknown) {
       console.error("Error quick add items:", error);
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -569,11 +644,20 @@ export default function ScanHomePage() {
   // Quick Add item management functions
   const addQuickAddItem = () => {
     const newId = generateQuickAddId();
-    setQuickAddData(prev => ({
+    setQuickAddData((prev) => ({
       ...prev,
-      items: [...prev.items, { id: newId, namaPerangkat: "", serialNumber: "", tagging: "", fotoUrls: [] }]
+      items: [
+        ...prev.items,
+        {
+          id: newId,
+          namaPerangkat: "",
+          serialNumber: "",
+          tagging: "",
+          fotoUrls: [],
+        },
+      ],
     }));
-    setExpandedItems(prev => [...prev, newId]);
+    setExpandedItems((prev) => [...prev, newId]);
   };
 
   const removeQuickAddItem = (itemId: string) => {
@@ -581,40 +665,46 @@ export default function ScanHomePage() {
       toast.error("Minimal satu item harus ada");
       return;
     }
-    setQuickAddData(prev => ({
+    setQuickAddData((prev) => ({
       ...prev,
-      items: prev.items.filter(item => item.id !== itemId)
+      items: prev.items.filter((item) => item.id !== itemId),
     }));
-    setExpandedItems(prev => prev.filter(id => id !== itemId));
+    setExpandedItems((prev) => prev.filter((id) => id !== itemId));
   };
 
-  const updateQuickAddItem = (itemId: string, field: string, value: string | string[]) => {
-    setQuickAddData(prev => ({
+  const updateQuickAddItem = (
+    itemId: string,
+    field: string,
+    value: string | string[],
+  ) => {
+    setQuickAddData((prev) => ({
       ...prev,
-      items: prev.items.map(item => 
-        item.id === itemId ? { ...item, [field]: value } : item
-      )
+      items: prev.items.map((item) =>
+        item.id === itemId ? { ...item, [field]: value } : item,
+      ),
     }));
   };
 
   const toggleItemExpanded = (itemId: string) => {
-    setExpandedItems(prev => 
-      prev.includes(itemId) 
-        ? prev.filter(id => id !== itemId)
-        : [...prev, itemId]
+    setExpandedItems((prev) =>
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId],
     );
   };
 
   const handleStartScan = () => {
     if (!window.isSecureContext) {
-      toast.error("Kamera memerlukan HTTPS. Gunakan HTTPS atau buka aplikasi melalui localhost.");
+      toast.error(
+        "Kamera memerlukan HTTPS. Gunakan HTTPS atau buka aplikasi melalui localhost.",
+      );
       return;
     }
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
       toast.error("Browser tidak mendukung akses kamera");
       return;
     }
-    
+
     // Check session first
     if (!sessionToken && !namaTeknisi) {
       setShowManualInput(false); // Ensure manual input is closed
@@ -622,7 +712,7 @@ export default function ScanHomePage() {
       setShowTechForm(true);
       return;
     }
-    
+
     // Close other modals and open scanner
     setShowTechForm(false);
     setShowManualInput(false);
@@ -655,8 +745,12 @@ export default function ScanHomePage() {
               <div className="inline-flex items-center justify-center w-16 h-16 bg-telkomsat-red/10 rounded-2xl mb-4">
                 <LogIn className="w-8 h-8 text-telkomsat-red" />
               </div>
-              <h2 className="text-2xl font-bold text-telkomsat-black">Identitas Teknisi</h2>
-              <p className="text-telkomsat-gray mt-2">Masukkan nama Anda untuk melanjutkan</p>
+              <h2 className="text-2xl font-bold text-telkomsat-black">
+                Identitas Teknisi
+              </h2>
+              <p className="text-telkomsat-gray mt-2">
+                Masukkan nama Anda untuk melanjutkan
+              </p>
             </div>
             <form onSubmit={handleTechFormSubmit} className="space-y-5">
               <div>
@@ -680,7 +774,9 @@ export default function ScanHomePage() {
                 <select
                   value={techType}
                   onChange={(e) =>
-                    setTechType(e.target.value as "freelance" | "karyawan" | "vendor")
+                    setTechType(
+                      e.target.value as "freelance" | "karyawan" | "vendor",
+                    )
                   }
                   className="w-full px-4 py-3 border-2 border-telkomsat-gray-lighter rounded-xl focus:ring-2 focus:ring-telkomsat-red focus:border-telkomsat-red outline-none transition-all"
                 >
@@ -708,8 +804,12 @@ export default function ScanHomePage() {
               <div className="inline-flex items-center justify-center w-16 h-16 bg-telkomsat-red/10 rounded-2xl mb-4">
                 <QrCode className="w-8 h-8 text-telkomsat-red" />
               </div>
-              <h2 className="text-2xl font-bold text-telkomsat-black">Input ID / SN / Tagging</h2>
-              <p className="text-telkomsat-gray mt-2">Cari item berdasarkan ID, serial number, atau tagging</p>
+              <h2 className="text-2xl font-bold text-telkomsat-black">
+                Input ID / SN / Tagging
+              </h2>
+              <p className="text-telkomsat-gray mt-2">
+                Cari item berdasarkan ID, serial number, atau tagging
+              </p>
             </div>
             <form onSubmit={handleManualInputSubmit} className="space-y-5">
               <div>
@@ -757,7 +857,8 @@ export default function ScanHomePage() {
                           ID: {item.id}
                         </p>
                         <p className="font-mono text-xs text-telkomsat-gray">
-                          SN: {item.serialNumber || "-"} · Tagging: {item.tagging || "-"}
+                          SN: {item.serialNumber || "-"} · Tagging:{" "}
+                          {item.tagging || "-"}
                         </p>
                       </button>
                     ))}
@@ -806,11 +907,15 @@ export default function ScanHomePage() {
             <div className="p-6 border-b border-telkomsat-gray-lighter flex-shrink-0">
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-4">
-                  <div className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl ${
-                    defaultAction === "DAMAGE" ? "bg-red-100" : 
-                    defaultAction === "FOUND" ? "bg-green-100" : 
-                    "bg-blue-100"
-                  }`}>
+                  <div
+                    className={`inline-flex items-center justify-center w-14 h-14 rounded-2xl ${
+                      defaultAction === "DAMAGE"
+                        ? "bg-red-100"
+                        : defaultAction === "FOUND"
+                          ? "bg-green-100"
+                          : "bg-blue-100"
+                    }`}
+                  >
                     {defaultAction === "DAMAGE" ? (
                       <AlertTriangle className="w-7 h-7 text-red-600" />
                     ) : defaultAction === "FOUND" ? (
@@ -821,17 +926,18 @@ export default function ScanHomePage() {
                   </div>
                   <div>
                     <h2 className="text-2xl font-bold text-telkomsat-black">
-                      {defaultAction === "DAMAGE" ? "Laporkan Barang Rusak" : 
-                       defaultAction === "FOUND" ? "Tambah Barang Ditemukan" :
-                       "Tambah & Bawa Item"}
+                      {defaultAction === "DAMAGE"
+                        ? "Laporkan Barang Rusak"
+                        : defaultAction === "FOUND"
+                          ? "Tambah Barang Ditemukan"
+                          : "Tambah & Bawa Item"}
                     </h2>
                     <p className="text-telkomsat-gray mt-1">
-                      {defaultAction === "DAMAGE" 
+                      {defaultAction === "DAMAGE"
                         ? "Tambahkan item rusak yang belum terdata untuk dilaporkan"
                         : defaultAction === "FOUND"
-                        ? "Tambahkan barang yang ditemukan dengan status Tersedia"
-                        : "Tambahkan satu atau lebih perangkat yang belum terdata untuk dibawa"
-                      }
+                          ? "Tambahkan barang yang ditemukan dengan status Tersedia"
+                          : "Tambahkan satu atau lebih perangkat yang belum terdata untuk dibawa"}
                     </p>
                   </div>
                 </div>
@@ -841,7 +947,15 @@ export default function ScanHomePage() {
                     setShowQuickAdd(false);
                     setQuickAddData({
                       lokasiTujuan: "",
-                      items: [{ id: generateQuickAddId(), namaPerangkat: "", serialNumber: "", tagging: "", fotoUrls: [] }],
+                      items: [
+                        {
+                          id: generateQuickAddId(),
+                          namaPerangkat: "",
+                          serialNumber: "",
+                          tagging: "",
+                          fotoUrls: [],
+                        },
+                      ],
                     });
                     setExpandedItems(["1"]);
                   }}
@@ -851,58 +965,78 @@ export default function ScanHomePage() {
                 </button>
               </div>
               {/* Info badge sesuai aksi */}
-              <div className={`mt-4 px-3 py-2 rounded-lg ${
-                defaultAction === "DAMAGE" 
-                  ? "bg-red-50 border border-red-200" 
-                  : defaultAction === "FOUND"
-                  ? "bg-green-50 border border-green-200"
-                  : "bg-yellow-50 border border-yellow-200"
-              }`}>
-                <p className={`text-xs ${
-                  defaultAction === "DAMAGE" ? "text-red-700" : 
-                  defaultAction === "FOUND" ? "text-green-700" :
-                  "text-yellow-700"
-                }`}>
-                  {defaultAction === "DAMAGE" 
+              <div
+                className={`mt-4 px-3 py-2 rounded-lg ${
+                  defaultAction === "DAMAGE"
+                    ? "bg-red-50 border border-red-200"
+                    : defaultAction === "FOUND"
+                      ? "bg-green-50 border border-green-200"
+                      : "bg-yellow-50 border border-yellow-200"
+                }`}
+              >
+                <p
+                  className={`text-xs ${
+                    defaultAction === "DAMAGE"
+                      ? "text-red-700"
+                      : defaultAction === "FOUND"
+                        ? "text-green-700"
+                        : "text-yellow-700"
+                  }`}
+                >
+                  {defaultAction === "DAMAGE"
                     ? "⚠️ Item akan ditandai sebagai RUSAK dan perlu diverifikasi oleh Admin"
                     : defaultAction === "FOUND"
-                    ? "✅ Item akan ditambahkan dengan status Tersedia dan langsung tersedia"
-                    : "📦 Item akan ditandai sebagai \"Outstanding\" dan perlu diverifikasi oleh Admin"
-                  }
+                      ? "✅ Item akan ditambahkan dengan status Tersedia dan langsung tersedia"
+                      : '📦 Item akan ditandai sebagai "Outstanding" dan perlu diverifikasi oleh Admin'}
                 </p>
               </div>
             </div>
 
             {/* Form - Scrollable */}
-            <form onSubmit={handleQuickAddSubmit} className="flex flex-col flex-1 overflow-hidden">
+            <form
+              onSubmit={handleQuickAddSubmit}
+              className="flex flex-col flex-1 overflow-hidden"
+            >
               <div className="flex-1 overflow-y-auto p-6 space-y-4">
                 {/* Lokasi - Berlaku untuk semua item */}
-                <div className={`rounded-xl p-4 ${
-                  defaultAction === "DAMAGE" 
-                    ? "bg-red-50 border border-red-200" 
-                    : "bg-blue-50 border border-blue-200"
-                }`}>
-                  <label className={`block text-sm font-semibold mb-2 ${
-                    defaultAction === "DAMAGE" ? "text-red-800" : "text-blue-800"
-                  }`}>
-                    {defaultAction === "DAMAGE" 
+                <div
+                  className={`rounded-xl p-4 ${
+                    defaultAction === "DAMAGE"
+                      ? "bg-red-50 border border-red-200"
+                      : "bg-blue-50 border border-blue-200"
+                  }`}
+                >
+                  <label
+                    className={`block text-sm font-semibold mb-2 ${
+                      defaultAction === "DAMAGE"
+                        ? "text-red-800"
+                        : "text-blue-800"
+                    }`}
+                  >
+                    {defaultAction === "DAMAGE"
                       ? "📍 Lokasi Barang Rusak Ditemukan (Berlaku untuk semua item)"
-                      : "📍 Lokasi Tujuan (Berlaku untuk semua item)"
-                    } <span className="text-red-500">*</span>
+                      : "📍 Lokasi Tujuan (Berlaku untuk semua item)"}{" "}
+                    <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={quickAddData.lokasiTujuan}
-                    onChange={(e) => setQuickAddData({ ...quickAddData, lokasiTujuan: e.target.value })}
+                    onChange={(e) =>
+                      setQuickAddData({
+                        ...quickAddData,
+                        lokasiTujuan: e.target.value,
+                      })
+                    }
                     required
                     className={`w-full px-4 py-3 border-2 rounded-xl focus:ring-2 outline-none transition-all bg-white ${
                       defaultAction === "DAMAGE"
                         ? "border-red-300 focus:ring-red-500 focus:border-red-500"
                         : "border-blue-300 focus:ring-blue-500 focus:border-blue-500"
                     }`}
-                    placeholder={defaultAction === "DAMAGE" 
-                      ? "Contoh: Gudang, Site ABC, Workshop"
-                      : "Contoh: Site ABC, Customer XYZ, Workshop"
+                    placeholder={
+                      defaultAction === "DAMAGE"
+                        ? "Contoh: Gudang, Site ABC, Workshop"
+                        : "Contoh: Site ABC, Customer XYZ, Workshop"
                     }
                   />
                 </div>
@@ -924,14 +1058,16 @@ export default function ScanHomePage() {
                   </div>
 
                   {quickAddData.items.map((item, index) => (
-                    <div 
-                      key={item.id} 
+                    <div
+                      key={item.id}
                       className="border-2 border-telkomsat-gray-lighter rounded-xl overflow-hidden transition-all"
                     >
                       {/* Item Header - Collapsible */}
-                      <div 
+                      <div
                         className={`flex items-center justify-between p-4 cursor-pointer transition-colors ${
-                          expandedItems.includes(item.id) ? "bg-orange-50" : "bg-telkomsat-gray-lighter/30 hover:bg-telkomsat-gray-lighter/50"
+                          expandedItems.includes(item.id)
+                            ? "bg-orange-50"
+                            : "bg-telkomsat-gray-lighter/30 hover:bg-telkomsat-gray-lighter/50"
                         }`}
                         onClick={() => toggleItemExpanded(item.id)}
                       >
@@ -980,12 +1116,19 @@ export default function ScanHomePage() {
                         <div className="p-4 space-y-4 border-t border-telkomsat-gray-lighter">
                           <div>
                             <label className="block text-sm font-semibold text-telkomsat-black mb-2">
-                              Nama Perangkat <span className="text-red-500">*</span>
+                              Nama Perangkat{" "}
+                              <span className="text-red-500">*</span>
                             </label>
                             <input
                               type="text"
                               value={item.namaPerangkat}
-                              onChange={(e) => updateQuickAddItem(item.id, "namaPerangkat", e.target.value)}
+                              onChange={(e) =>
+                                updateQuickAddItem(
+                                  item.id,
+                                  "namaPerangkat",
+                                  e.target.value,
+                                )
+                              }
                               className="w-full px-4 py-3 border-2 border-telkomsat-gray-lighter rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
                               placeholder="Contoh: BUC 2 WATT FULL C-BAND"
                             />
@@ -999,7 +1142,13 @@ export default function ScanHomePage() {
                               <input
                                 type="text"
                                 value={item.serialNumber}
-                                onChange={(e) => updateQuickAddItem(item.id, "serialNumber", e.target.value)}
+                                onChange={(e) =>
+                                  updateQuickAddItem(
+                                    item.id,
+                                    "serialNumber",
+                                    e.target.value,
+                                  )
+                                }
                                 className="w-full px-4 py-3 border-2 border-telkomsat-gray-lighter rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all font-mono"
                                 placeholder="Contoh: A07458A12"
                               />
@@ -1011,7 +1160,13 @@ export default function ScanHomePage() {
                               <input
                                 type="text"
                                 value={item.tagging}
-                                onChange={(e) => updateQuickAddItem(item.id, "tagging", e.target.value)}
+                                onChange={(e) =>
+                                  updateQuickAddItem(
+                                    item.id,
+                                    "tagging",
+                                    e.target.value,
+                                  )
+                                }
                                 className="w-full px-4 py-3 border-2 border-telkomsat-gray-lighter rounded-xl focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
                                 placeholder="Contoh: TLSAT1339900026009"
                               />
@@ -1022,12 +1177,16 @@ export default function ScanHomePage() {
                             <label className="block text-sm font-semibold text-telkomsat-black mb-2">
                               <div className="flex items-center space-x-2">
                                 <Camera className="w-4 h-4" />
-                                <span>Foto SN & Tagging Perangkat (Opsional)</span>
+                                <span>
+                                  Foto SN & Tagging Perangkat (Opsional)
+                                </span>
                               </div>
                             </label>
                             <ImageUpload
                               images={item.fotoUrls}
-                              onImagesChange={(urls) => updateQuickAddItem(item.id, "fotoUrls", urls)}
+                              onImagesChange={(urls) =>
+                                updateQuickAddItem(item.id, "fotoUrls", urls)
+                              }
                               maxImages={3}
                               label=""
                               compact={true}
@@ -1055,7 +1214,11 @@ export default function ScanHomePage() {
                 <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3">
                   <button
                     type="submit"
-                    disabled={quickAddLoading || !quickAddData.lokasiTujuan.trim() || quickAddData.items.every(i => !i.namaPerangkat.trim())}
+                    disabled={
+                      quickAddLoading ||
+                      !quickAddData.lokasiTujuan.trim() ||
+                      quickAddData.items.every((i) => !i.namaPerangkat.trim())
+                    }
                     className={`flex-1 text-white py-3.5 px-4 rounded-xl hover:shadow-xl transition-all duration-300 font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center space-x-2 ${
                       defaultAction === "DAMAGE"
                         ? "bg-gradient-to-r from-red-500 to-red-600"
@@ -1065,7 +1228,15 @@ export default function ScanHomePage() {
                     {quickAddLoading ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        <span>Menyimpan {quickAddData.items.filter(i => i.namaPerangkat.trim()).length} item...</span>
+                        <span>
+                          Menyimpan{" "}
+                          {
+                            quickAddData.items.filter((i) =>
+                              i.namaPerangkat.trim(),
+                            ).length
+                          }{" "}
+                          item...
+                        </span>
                       </>
                     ) : (
                       <>
@@ -1076,9 +1247,8 @@ export default function ScanHomePage() {
                         )}
                         <span>
                           {defaultAction === "DAMAGE"
-                            ? `Laporkan ${quickAddData.items.filter(i => i.namaPerangkat.trim()).length} Item Rusak`
-                            : `Tambah ${quickAddData.items.filter(i => i.namaPerangkat.trim()).length} Item & Bawa`
-                          }
+                            ? `Laporkan ${quickAddData.items.filter((i) => i.namaPerangkat.trim()).length} Item Rusak`
+                            : `Tambah ${quickAddData.items.filter((i) => i.namaPerangkat.trim()).length} Item & Bawa`}
                         </span>
                       </>
                     )}
@@ -1089,7 +1259,15 @@ export default function ScanHomePage() {
                       setShowQuickAdd(false);
                       setQuickAddData({
                         lokasiTujuan: "",
-                        items: [{ id: generateQuickAddId(), namaPerangkat: "", serialNumber: "", tagging: "", fotoUrls: [] }],
+                        items: [
+                          {
+                            id: generateQuickAddId(),
+                            namaPerangkat: "",
+                            serialNumber: "",
+                            tagging: "",
+                            fotoUrls: [],
+                          },
+                        ],
                       });
                       setExpandedItems(["1"]);
                     }}
@@ -1118,7 +1296,9 @@ export default function ScanHomePage() {
         <div className="fixed inset-0 bg-black bg-opacity-40 z-40 flex items-center justify-center">
           <div className="bg-white rounded-2xl p-6 shadow-2xl flex items-center space-x-4">
             <Loader2 className="w-8 h-8 text-telkomsat-red animate-spin" />
-            <span className="text-telkomsat-black font-semibold">Memproses...</span>
+            <span className="text-telkomsat-black font-semibold">
+              Memproses...
+            </span>
           </div>
         </div>
       )}
@@ -1126,26 +1306,26 @@ export default function ScanHomePage() {
       <div className="min-h-screen relative overflow-hidden bg-gradient-to-br from-gray-50 to-gray-100">
         {/* Floating Decorative Elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div 
+          <div
             className="absolute w-64 h-64 rounded-full opacity-10"
             style={{
-              background: 'linear-gradient(135deg, #E31E24 0%, #ff6b6b 100%)',
-              top: '-5%',
-              right: '-5%',
-              filter: 'blur(40px)',
+              background: "linear-gradient(135deg, #E31E24 0%, #ff6b6b 100%)",
+              top: "-5%",
+              right: "-5%",
+              filter: "blur(40px)",
             }}
           />
-          <div 
+          <div
             className="absolute w-48 h-48 rounded-full opacity-15"
             style={{
-              background: 'linear-gradient(135deg, #6B7280 0%, #9CA3AF 100%)',
-              bottom: '10%',
-              left: '-3%',
-              filter: 'blur(30px)',
+              background: "linear-gradient(135deg, #6B7280 0%, #9CA3AF 100%)",
+              bottom: "10%",
+              left: "-3%",
+              filter: "blur(30px)",
             }}
           />
         </div>
-        
+
         <div className="relative z-10 p-4">
           <div className="max-w-6xl mx-auto">
             {/* Header */}
@@ -1156,18 +1336,22 @@ export default function ScanHomePage() {
               <h1 className="text-3xl font-bold text-telkomsat-black mb-2">
                 Multi-Scan QR Code Sparepart
               </h1>
-              <p className="text-telkomsat-gray text-base">Telkomsat Regional 6 - Scan banyak perangkat sekaligus</p>
+              <p className="text-telkomsat-gray text-base">
+                Telkomsat Regional 6 - Scan banyak perangkat sekaligus
+              </p>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Left Column - Controls */}
               <div className="lg:col-span-1 space-y-4">
-                <div 
+                <div
                   className="bg-white rounded-xl shadow-lg p-6 border border-telkomsat-gray-lighter animate-slide-in-left"
                   style={{ animationDelay: "0.1s" }}
                 >
-                  <h2 className="text-lg font-bold text-telkomsat-black mb-4">Kontrol Scan</h2>
-                  
+                  <h2 className="text-lg font-bold text-telkomsat-black mb-4">
+                    Kontrol Scan
+                  </h2>
+
                   {/* Default Action */}
                   <div className="mb-5">
                     <label className="block text-sm font-semibold text-telkomsat-black mb-3">
@@ -1215,7 +1399,8 @@ export default function ScanHomePage() {
                         ✅ Ditemukan
                       </button>
                     </div>
-                    {(defaultAction === "DISMANTLE" || defaultAction === "FOUND") && (
+                    {(defaultAction === "DISMANTLE" ||
+                      defaultAction === "FOUND") && (
                       <div className="mt-4 p-3.5 bg-orange-50/80 border border-orange-200 rounded-xl space-y-3">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-orange-900">
@@ -1231,7 +1416,9 @@ export default function ScanHomePage() {
                           <div className="grid grid-cols-3 gap-1.5">
                             <button
                               type="button"
-                              onClick={() => setDefaultIncomingCondition("Bagus")}
+                              onClick={() =>
+                                setDefaultIncomingCondition("Bagus")
+                              }
                               className={`py-1.5 px-2 rounded-lg text-xs font-medium border transition-all ${
                                 defaultIncomingCondition === "Bagus"
                                   ? "bg-green-600 text-white border-green-600 shadow-sm"
@@ -1242,7 +1429,9 @@ export default function ScanHomePage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => setDefaultIncomingCondition("Rusak")}
+                              onClick={() =>
+                                setDefaultIncomingCondition("Rusak")
+                              }
                               className={`py-1.5 px-2 rounded-lg text-xs font-medium border transition-all ${
                                 defaultIncomingCondition === "Rusak"
                                   ? "bg-red-600 text-white border-red-600 shadow-sm"
@@ -1253,7 +1442,9 @@ export default function ScanHomePage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => setDefaultIncomingCondition("Tidak Diketahui")}
+                              onClick={() =>
+                                setDefaultIncomingCondition("Tidak Diketahui")
+                              }
                               className={`py-1.5 px-2 rounded-lg text-xs font-medium border transition-all ${
                                 defaultIncomingCondition === "Tidak Diketahui"
                                   ? "bg-amber-600 text-white border-amber-600 shadow-sm"
@@ -1267,8 +1458,8 @@ export default function ScanHomePage() {
                             {defaultIncomingCondition === "Bagus"
                               ? "✓ Status akan menjadi 'Tersedia' setelah disetujui Admin."
                               : defaultIncomingCondition === "Rusak"
-                              ? "⚠️ Status akan menjadi 'Rusak'."
-                              : "ℹ️ Status akan menjadi 'Perlu Pengecekan'."}
+                                ? "⚠️ Status akan menjadi 'Rusak'."
+                                : "ℹ️ Status akan menjadi 'Perlu Pengecekan'."}
                           </p>
                         </div>
 
@@ -1281,14 +1472,21 @@ export default function ScanHomePage() {
                             <input
                               type="text"
                               value={defaultIncomingLocation}
-                              onChange={(e) => setDefaultIncomingLocation(e.target.value)}
+                              onChange={(e) =>
+                                setDefaultIncomingLocation(e.target.value)
+                              }
                               placeholder="Gudang Regional 6 / Base"
                               className="flex-1 px-2.5 py-1.5 bg-white border border-orange-300 rounded-lg text-xs outline-none focus:ring-1 focus:ring-orange-500 font-medium text-black"
                             />
-                            {defaultIncomingLocation !== "Gudang Regional 6" && (
+                            {defaultIncomingLocation !==
+                              "Gudang Regional 6" && (
                               <button
                                 type="button"
-                                onClick={() => setDefaultIncomingLocation("Gudang Regional 6")}
+                                onClick={() =>
+                                  setDefaultIncomingLocation(
+                                    "Gudang Regional 6",
+                                  )
+                                }
                                 className="px-2 py-1 bg-orange-200 hover:bg-orange-300 text-orange-900 rounded-lg text-[11px] font-semibold"
                                 title="Reset ke Gudang Regional 6"
                               >
@@ -1327,7 +1525,9 @@ export default function ScanHomePage() {
                         // Check session first
                         if (!sessionToken && !namaTeknisi) {
                           setShowTechForm(true);
-                          toast.error("Silakan isi nama teknisi terlebih dahulu");
+                          toast.error(
+                            "Silakan isi nama teknisi terlebih dahulu",
+                          );
                           return;
                         }
                         setShowQuickAdd(true);
@@ -1358,11 +1558,16 @@ export default function ScanHomePage() {
                     <div className="mt-5 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl">
                       <div className="flex items-center justify-between">
                         <p className="text-sm text-green-800">
-                          <span className="font-semibold">✓ Teknisi:</span> {namaTeknisi}
+                          <span className="font-semibold">✓ Teknisi:</span>{" "}
+                          {namaTeknisi}
                         </p>
                         <button
                           onClick={() => {
-                            if (confirm("Akhiri sesi? Keranjang akan dikosongkan.")) {
+                            if (
+                              confirm(
+                                "Akhiri sesi? Keranjang akan dikosongkan.",
+                              )
+                            ) {
                               clearCart();
                               clearSession();
                               toast.success("Sesi diakhiri", { icon: "👋" });
@@ -1378,33 +1583,48 @@ export default function ScanHomePage() {
                 </div>
 
                 {/* Quick Stats */}
-                <div 
+                <div
                   className="bg-white rounded-xl shadow-lg p-6 border border-telkomsat-gray-lighter animate-slide-in-left"
                   style={{ animationDelay: "0.2s" }}
                 >
-                  <h3 className="text-sm font-semibold text-telkomsat-gray mb-3">Ringkasan Keranjang</h3>
+                  <h3 className="text-sm font-semibold text-telkomsat-gray mb-3">
+                    Ringkasan Keranjang
+                  </h3>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-3 bg-blue-50 rounded-xl text-center">
                       <p className="text-2xl font-bold text-blue-600">
-                        {scannedItems.filter(i => i.actionType === "MOVE").length}
+                        {
+                          scannedItems.filter((i) => i.actionType === "MOVE")
+                            .length
+                        }
                       </p>
                       <p className="text-xs text-blue-600">Bawa</p>
                     </div>
                     <div className="p-3 bg-red-50 rounded-xl text-center">
                       <p className="text-2xl font-bold text-red-600">
-                        {scannedItems.filter(i => i.actionType === "DAMAGE").length}
+                        {
+                          scannedItems.filter((i) => i.actionType === "DAMAGE")
+                            .length
+                        }
                       </p>
                       <p className="text-xs text-red-600">Rusak</p>
                     </div>
                     <div className="p-3 bg-green-50 rounded-xl text-center">
                       <p className="text-2xl font-bold text-green-600">
-                        {scannedItems.filter(i => i.actionType === "FOUND").length}
+                        {
+                          scannedItems.filter((i) => i.actionType === "FOUND")
+                            .length
+                        }
                       </p>
                       <p className="text-xs text-green-600">Ditemukan</p>
                     </div>
                     <div className="p-3 bg-orange-50 rounded-xl text-center">
                       <p className="text-2xl font-bold text-orange-600">
-                        {scannedItems.filter(i => i.actionType === "DISMANTLE").length}
+                        {
+                          scannedItems.filter(
+                            (i) => i.actionType === "DISMANTLE",
+                          ).length
+                        }
                       </p>
                       <p className="text-xs text-orange-600">Dismantle</p>
                     </div>
@@ -1414,13 +1634,16 @@ export default function ScanHomePage() {
 
               {/* Right Column - Scanned Items List */}
               <div className="lg:col-span-2">
-                <div 
+                <div
                   className="bg-white rounded-xl shadow-lg border border-telkomsat-gray-lighter animate-slide-in-right overflow-hidden"
                   style={{ animationDelay: "0.2s" }}
                 >
                   <div className="p-6 border-b border-telkomsat-gray-lighter bg-gradient-to-r from-telkomsat-red/5 to-transparent flex items-center justify-between">
                     <h2 className="text-lg font-bold text-telkomsat-black">
-                      Item yang Di-scan <span className="text-telkomsat-red">({scannedItems.length})</span>
+                      Item yang Di-scan{" "}
+                      <span className="text-telkomsat-red">
+                        ({scannedItems.length})
+                      </span>
                     </h2>
                     {scannedItems.length > 0 && (
                       <Link
@@ -1440,9 +1663,12 @@ export default function ScanHomePage() {
                         <div className="inline-flex items-center justify-center w-20 h-20 bg-telkomsat-gray-lighter rounded-2xl mb-4">
                           <Package className="w-10 h-10 text-telkomsat-gray" />
                         </div>
-                        <p className="text-telkomsat-black font-semibold mb-2">Belum ada item yang di-scan</p>
+                        <p className="text-telkomsat-black font-semibold mb-2">
+                          Belum ada item yang di-scan
+                        </p>
                         <p className="text-sm text-telkomsat-gray max-w-md mx-auto mb-6">
-                          Buka scanner dan scan QR code perangkat untuk menambahkannya ke keranjang
+                          Buka scanner dan scan QR code perangkat untuk
+                          menambahkannya ke keranjang
                         </p>
                         <button
                           onClick={handleStartScan}
@@ -1461,13 +1687,13 @@ export default function ScanHomePage() {
                               item.actionType === "FOUND"
                                 ? "border-green-200 bg-gradient-to-r from-green-50 to-green-50/50 hover:from-green-100 hover:to-green-100/50 shadow-sm"
                                 : item.actionType === "DAMAGE"
-                                ? "border-red-200 bg-red-50/30 hover:bg-red-50/50"
-                                : item.actionType === "DISMANTLE"
-                                ? "border-orange-200 bg-orange-50/30 hover:bg-orange-50/50"
-                                : "border-telkomsat-gray-lighter hover:bg-telkomsat-gray-lighter/30"
+                                  ? "border-red-200 bg-red-50/30 hover:bg-red-50/50"
+                                  : item.actionType === "DISMANTLE"
+                                    ? "border-orange-200 bg-orange-50/30 hover:bg-orange-50/50"
+                                    : "border-telkomsat-gray-lighter hover:bg-telkomsat-gray-lighter/30"
                             }`}
-                            style={{ 
-                              animation: `fadeIn 0.3s ease-out ${index * 0.05}s forwards` 
+                            style={{
+                              animation: `fadeIn 0.3s ease-out ${index * 0.05}s forwards`,
                             }}
                           >
                             <div className="flex-1">
@@ -1490,27 +1716,39 @@ export default function ScanHomePage() {
                                   </div>
                                 )}
                                 <div className="flex-1">
-                                  <p className="font-semibold text-telkomsat-black">{item.nama}</p>
+                                  <p className="font-semibold text-telkomsat-black">
+                                    {item.nama}
+                                  </p>
                                   {item.serialNumber && (
                                     <p className="text-sm text-telkomsat-gray mt-0.5 font-mono">
                                       SN: {item.serialNumber}
                                     </p>
                                   )}
-                                  {item.actionType === "FOUND" && item.lokasiDitemukan && (
-                                    <p className="text-sm text-green-700 mt-1 font-medium flex items-center space-x-1">
-                                      <MapPin className="w-3.5 h-3.5" />
-                                      <span>Ditemukan di: {item.lokasiDitemukan}</span>
-                                    </p>
-                                  )}
+                                  {item.actionType === "FOUND" &&
+                                    item.lokasiDitemukan && (
+                                      <p className="text-sm text-green-700 mt-1 font-medium flex items-center space-x-1">
+                                        <MapPin className="w-3.5 h-3.5" />
+                                        <span>
+                                          Ditemukan di: {item.lokasiDitemukan}
+                                        </span>
+                                      </p>
+                                    )}
                                   {item.actionType === "DISMANTLE" && (
                                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                                      <span className="text-xs text-telkomsat-gray font-medium">Kondisi:</span>
+                                      <span className="text-xs text-telkomsat-gray font-medium">
+                                        Kondisi:
+                                      </span>
                                       <div className="inline-flex rounded-lg border border-orange-200 p-0.5 bg-white text-xs">
                                         <button
                                           type="button"
-                                          onClick={() => updateItem(item.cartItemId, { kondisiDismantle: "Bagus" })}
+                                          onClick={() =>
+                                            updateItem(item.cartItemId, {
+                                              kondisiDismantle: "Bagus",
+                                            })
+                                          }
                                           className={`px-2 py-0.5 rounded-md font-medium transition-all ${
-                                            (item.kondisiDismantle || "Bagus") === "Bagus"
+                                            (item.kondisiDismantle ||
+                                              "Bagus") === "Bagus"
                                               ? "bg-green-600 text-white"
                                               : "text-gray-600 hover:text-black"
                                           }`}
@@ -1519,7 +1757,11 @@ export default function ScanHomePage() {
                                         </button>
                                         <button
                                           type="button"
-                                          onClick={() => updateItem(item.cartItemId, { kondisiDismantle: "Rusak" })}
+                                          onClick={() =>
+                                            updateItem(item.cartItemId, {
+                                              kondisiDismantle: "Rusak",
+                                            })
+                                          }
                                           className={`px-2 py-0.5 rounded-md font-medium transition-all ${
                                             item.kondisiDismantle === "Rusak"
                                               ? "bg-red-600 text-white"
@@ -1530,9 +1772,15 @@ export default function ScanHomePage() {
                                         </button>
                                         <button
                                           type="button"
-                                          onClick={() => updateItem(item.cartItemId, { kondisiDismantle: "Tidak Diketahui" })}
+                                          onClick={() =>
+                                            updateItem(item.cartItemId, {
+                                              kondisiDismantle:
+                                                "Tidak Diketahui",
+                                            })
+                                          }
                                           className={`px-2 py-0.5 rounded-md font-medium transition-all ${
-                                            item.kondisiDismantle === "Tidak Diketahui"
+                                            item.kondisiDismantle ===
+                                            "Tidak Diketahui"
                                               ? "bg-amber-600 text-white"
                                               : "text-gray-600 hover:text-black"
                                           }`}
@@ -1545,13 +1793,20 @@ export default function ScanHomePage() {
 
                                   {item.actionType === "FOUND" && (
                                     <div className="mt-2 flex flex-wrap items-center gap-2">
-                                      <span className="text-xs text-telkomsat-gray font-medium">Kondisi:</span>
+                                      <span className="text-xs text-telkomsat-gray font-medium">
+                                        Kondisi:
+                                      </span>
                                       <div className="inline-flex rounded-lg border border-green-200 p-0.5 bg-white text-xs">
                                         <button
                                           type="button"
-                                          onClick={() => updateItem(item.cartItemId, { kondisiBarang: "Bagus" })}
+                                          onClick={() =>
+                                            updateItem(item.cartItemId, {
+                                              kondisiBarang: "Bagus",
+                                            })
+                                          }
                                           className={`px-2 py-0.5 rounded-md font-medium transition-all ${
-                                            (item.kondisiBarang || "Bagus") === "Bagus"
+                                            (item.kondisiBarang || "Bagus") ===
+                                            "Bagus"
                                               ? "bg-green-600 text-white"
                                               : "text-gray-600 hover:text-black"
                                           }`}
@@ -1560,7 +1815,11 @@ export default function ScanHomePage() {
                                         </button>
                                         <button
                                           type="button"
-                                          onClick={() => updateItem(item.cartItemId, { kondisiBarang: "Rusak" })}
+                                          onClick={() =>
+                                            updateItem(item.cartItemId, {
+                                              kondisiBarang: "Rusak",
+                                            })
+                                          }
                                           className={`px-2 py-0.5 rounded-md font-medium transition-all ${
                                             item.kondisiBarang === "Rusak"
                                               ? "bg-red-600 text-white"
@@ -1571,9 +1830,14 @@ export default function ScanHomePage() {
                                         </button>
                                         <button
                                           type="button"
-                                          onClick={() => updateItem(item.cartItemId, { kondisiBarang: "Tidak Diketahui" })}
+                                          onClick={() =>
+                                            updateItem(item.cartItemId, {
+                                              kondisiBarang: "Tidak Diketahui",
+                                            })
+                                          }
                                           className={`px-2 py-0.5 rounded-md font-medium transition-all ${
-                                            item.kondisiBarang === "Tidak Diketahui"
+                                            item.kondisiBarang ===
+                                            "Tidak Diketahui"
                                               ? "bg-amber-600 text-white"
                                               : "text-gray-600 hover:text-black"
                                           }`}
@@ -1591,23 +1855,28 @@ export default function ScanHomePage() {
                                     item.actionType === "MOVE"
                                       ? "bg-blue-100 text-blue-700"
                                       : item.actionType === "FOUND"
-                                      ? "bg-green-100 text-green-700"
-                                      : item.actionType === "DISMANTLE"
-                                      ? "bg-orange-100 text-orange-700"
-                                      : "bg-red-100 text-red-700"
+                                        ? "bg-green-100 text-green-700"
+                                        : item.actionType === "DISMANTLE"
+                                          ? "bg-orange-100 text-orange-700"
+                                          : "bg-red-100 text-red-700"
                                   }`}
                                 >
-                                  {item.actionType === "MOVE" 
-                                    ? "📦 Bawa Barang" 
+                                  {item.actionType === "MOVE"
+                                    ? "📦 Bawa Barang"
                                     : item.actionType === "FOUND"
-                                    ? `✅ Barang Ditemukan (${item.kondisiBarang || "Bagus"})`
-                                    : item.actionType === "DISMANTLE"
-                                    ? `🔧 Dismantle (${item.kondisiDismantle || "Bagus"})`
-                                    : "⚠️ Lapor Rusak"}
+                                      ? `✅ Barang Ditemukan (${item.kondisiBarang || "Bagus"})`
+                                      : item.actionType === "DISMANTLE"
+                                        ? `🔧 Dismantle (${item.kondisiDismantle || "Bagus"})`
+                                        : "⚠️ Lapor Rusak"}
                                 </span>
-                                {(item.actionType === "DISMANTLE" || item.actionType === "FOUND") && (
+                                {(item.actionType === "DISMANTLE" ||
+                                  item.actionType === "FOUND") && (
                                   <span className="text-[11px] text-gray-500 font-medium">
-                                    Masuk ke: <strong className="text-gray-700">{item.lokasiDitemukan || "Gudang Regional 6"}</strong>
+                                    Masuk ke:{" "}
+                                    <strong className="text-gray-700">
+                                      {item.lokasiDitemukan ||
+                                        "Gudang Regional 6"}
+                                    </strong>
                                   </span>
                                 )}
                               </div>
@@ -1669,8 +1938,12 @@ export default function ScanHomePage() {
             <div className="p-6 space-y-4">
               {/* Info Barang */}
               <div className="bg-green-50 border border-green-200 rounded-xl p-4">
-                <p className="text-sm font-semibold text-green-800 mb-1">Barang yang Ditemukan:</p>
-                <p className="text-base font-bold text-telkomsat-black">{foundItemData.nama}</p>
+                <p className="text-sm font-semibold text-green-800 mb-1">
+                  Barang yang Ditemukan:
+                </p>
+                <p className="text-base font-bold text-telkomsat-black">
+                  {foundItemData.nama}
+                </p>
                 {foundItemData.lokasiSaatIni && (
                   <p className="text-xs text-green-700 mt-1">
                     Lokasi terakhir: {foundItemData.lokasiSaatIni}
@@ -1772,7 +2045,9 @@ export default function ScanHomePage() {
                   <CheckCircle className="w-6 h-6" />
                   <div className="text-left">
                     <p className="font-semibold">Bagus</p>
-                    <p className="text-xs opacity-75">Status: Tersedia, bisa dibawa ke lokasi</p>
+                    <p className="text-xs opacity-75">
+                      Status: Tersedia, bisa dibawa ke lokasi
+                    </p>
                   </div>
                 </button>
                 <button

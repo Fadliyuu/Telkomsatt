@@ -25,7 +25,9 @@ export const USER_ROLES: UserRole[] = [
 export const RESERVED_UPGRADE_ROLES = ["manager", "direktur"] as const;
 export type ReservedUpgradeRole = (typeof RESERVED_UPGRADE_ROLES)[number];
 
-export function isReservedUpgradeRole(role: UserRole): role is ReservedUpgradeRole {
+export function isReservedUpgradeRole(
+  role: UserRole,
+): role is ReservedUpgradeRole {
   return (RESERVED_UPGRADE_ROLES as readonly UserRole[]).includes(role);
 }
 
@@ -36,6 +38,8 @@ export function isRoleSelectableInAccountForm(role: UserRole): boolean {
 export interface User {
   id: string;
   nama: string;
+  /** Nama depan unik untuk login; email tetap digunakan untuk reset password. */
+  username?: string;
   email: string;
   role: UserRole;
   status: UserStatus;
@@ -64,15 +68,16 @@ export const USER_ROLE_LABELS: Record<UserRole, string> = {
 };
 
 // Role Colors untuk styling (WCAG AA Compliant)
-export const USER_ROLE_COLORS: Record<UserRole, { bg: string; text: string }> = {
-  admin: { bg: "bg-rose-100", text: "text-rose-900" },
-  admin_gudang: { bg: "bg-amber-100", text: "text-amber-900" },
-  teknisi: { bg: "bg-green-100", text: "text-green-900" },
-  supervisor: { bg: "bg-indigo-100", text: "text-indigo-900" },
-  direktur: { bg: "bg-purple-100", text: "text-purple-900" },
-  manager: { bg: "bg-blue-100", text: "text-blue-900" },
-  admin_keuangan: { bg: "bg-emerald-100", text: "text-emerald-900" },
-};
+export const USER_ROLE_COLORS: Record<UserRole, { bg: string; text: string }> =
+  {
+    admin: { bg: "bg-rose-100", text: "text-rose-900" },
+    admin_gudang: { bg: "bg-amber-100", text: "text-amber-900" },
+    teknisi: { bg: "bg-green-100", text: "text-green-900" },
+    supervisor: { bg: "bg-indigo-100", text: "text-indigo-900" },
+    direktur: { bg: "bg-purple-100", text: "text-purple-900" },
+    manager: { bg: "bg-blue-100", text: "text-blue-900" },
+    admin_keuangan: { bg: "bg-emerald-100", text: "text-emerald-900" },
+  };
 
 // Sparepart Types
 export interface Sparepart {
@@ -113,7 +118,13 @@ export interface SparepartItem {
   tagging?: string; // Tag/label tambahan
   cariFisik?: "Sesuai" | "Tidak Ditemukan" | "Outstanding" | "Mutasi Keluar"; // Status fisik sesuai PDF
   lokasiSaatIni?: string; // Lokasi saat ini (Status di PDF, opsional)
-  status?: "Tersedia" | "Digunakan" | "Rusak" | "Hilang" | "Maintenance" | "Perlu Pengecekan"; // Status sistem (opsional)
+  status?:
+    | "Tersedia"
+    | "Digunakan"
+    | "Rusak"
+    | "Hilang"
+    | "Maintenance"
+    | "Perlu Pengecekan"; // Status sistem (opsional)
   keterangan?: string;
   qrCodeUrl?: string; // QR Code URL untuk scan item
   fotoUrl?: string[]; // Array URL foto dari Cloudinary
@@ -144,7 +155,8 @@ export interface SparepartItem {
 }
 
 // Lokasi Types
-export type LokasiType = "Gudang" | "Site" | "Customer" | "Workshop" | "Lainnya";
+export type LokasiType =
+  "Gudang" | "Site" | "Customer" | "Workshop" | "Lainnya";
 
 export interface Lokasi {
   id: string;
@@ -192,13 +204,13 @@ export interface Transaksi {
   statusTransaksi: StatusTransaksi; // Wajib: pending | completed | rejected
   jumlah: number;
   statusBarang: StatusBarang;
-  
+
   // Ownership & Verification tracking
   requestedByUid: string; // Unified owner UID
   requestedByName: string; // Unified owner Name
   requestedByRole?: UserRole;
   requestedAt: Date;
-  
+
   approvedByUid?: string;
   approvedByName?: string;
   approvedByRole?: UserRole;

@@ -12,6 +12,24 @@ import { auth, db } from "./config";
 import { COLLECTIONS } from "./collections";
 import { User } from "@/types";
 
+async function resolveUsername(username: string): Promise<string> {
+  const response = await fetch("/api/auth/resolve-username", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ username: username.trim().toLowerCase() }),
+  });
+  const payload = (await response.json().catch(() => null)) as {
+    success?: boolean;
+    data?: { email?: string };
+  } | null;
+
+  if (!response.ok || !payload?.success || !payload.data?.email) {
+    throw new Error("Username atau password salah. Periksa kembali.");
+  }
+
+  return payload.data.email;
+}
+
 function mapAuthError(error: unknown): string {
   const code =
     error && typeof error === "object" && "code" in error
@@ -22,11 +40,11 @@ function mapAuthError(error: unknown): string {
       case "auth/invalid-credential":
       case "auth/wrong-password":
       case "auth/user-not-found":
-        return "Email atau password salah. Periksa kembali atau gunakan fitur lupa password.";
+        return "Username atau password salah. Periksa kembali atau gunakan fitur lupa password.";
       case "auth/invalid-email":
-        return "Format email tidak valid.";
+        return "Username tidak valid.";
       case "auth/missing-email":
-        return "Email wajib diisi.";
+        return "Username wajib diisi.";
       case "auth/user-disabled":
         return "Akun ini dinonaktifkan.";
       case "auth/too-many-requests":
@@ -56,9 +74,17 @@ function getPasswordResetActionSettings(): ActionCodeSettings | undefined {
   };
 }
 
-export const login = async (email: string, password: string): Promise<User> => {
+export const login = async (
+  username: string,
+  password: string,
+): Promise<User> => {
   try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const email = await resolveUsername(username);
+    const userCredential = await signInWithEmailAndPassword(
+      auth,
+      email,
+      password,
+    );
     const firebaseUser = userCredential.user;
 
     // Get user data from Firestore
@@ -95,7 +121,9 @@ export const logout = async (): Promise<void> => {
   try {
     const { disablePush } = await import("./push");
     await disablePush();
-    await fetch("/api/auth/session", { method: "DELETE" }).catch(() => undefined);
+    await fetch("/api/auth/session", { method: "DELETE" }).catch(
+      () => undefined,
+    );
     await signOut(auth);
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Logout failed";
@@ -120,9 +148,12 @@ export const getCurrentUser = (): Promise<FirebaseUser | null> => {
   });
 };
 
-export const getCurrentUserData = async (customUser?: FirebaseUser | null): Promise<User | null> => {
+export const getCurrentUserData = async (
+  customUser?: FirebaseUser | null,
+): Promise<User | null> => {
   try {
-    const firebaseUser = customUser || auth.currentUser || await getCurrentUser();
+    const firebaseUser =
+      customUser || auth.currentUser || (await getCurrentUser());
     if (!firebaseUser) return null;
 
     const userDoc = await getDoc(doc(db, COLLECTIONS.USERS, firebaseUser.uid));
@@ -145,14 +176,19 @@ export const getCurrentUserData = async (customUser?: FirebaseUser | null): Prom
 export const createAdminUser = async (
   email: string,
   password: string,
-  nama: string
+  nama: string,
 ): Promise<void> => {
   try {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const userCredential = await createUserWithEmailAndPassword(
+      auth,
+      email,
+      password,
+    );
     const user = userCredential.user;
 
     const userData: Omit<User, "id"> = {
       nama,
+      username: nama.trim().split(/\s+/)[0].toLowerCase(),
       email,
       role: "admin",
       status: "aktif",

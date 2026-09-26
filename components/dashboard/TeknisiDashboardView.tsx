@@ -19,16 +19,22 @@ import { formatDate } from "@/lib/utils";
 
 export default function TeknisiDashboardView() {
   const { user } = useAuthStore();
-  const { items: cartItems, namaTeknisi, initSession } = useCartStore();
+  const {
+    items: cartItems,
+    namaTeknisi,
+    initSession,
+    clearSession,
+  } = useCartStore();
   const [recentTx, setRecentTx] = useState<Transaksi[]>([]);
   const [txCount, setTxCount] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user?.nama && !namaTeknisi) {
+    if (user?.nama && namaTeknisi !== user.nama) {
+      clearSession();
       initSession(user.nama, "karyawan");
     }
-  }, [user, namaTeknisi, initSession]);
+  }, [user, namaTeknisi, initSession, clearSession]);
 
   const loadStats = useCallback(async () => {
     try {
@@ -43,7 +49,7 @@ export default function TeknisiDashboardView() {
       });
 
       const sorted = all.sort(
-        (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+        (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
       );
       setTxCount(sorted.length);
       setRecentTx(sorted.slice(0, 8));
@@ -97,26 +103,33 @@ export default function TeknisiDashboardView() {
           Halo, {user?.nama?.split(" ")[0] || "Teknisi"}
         </h1>
         <p className="text-sm text-gray-400">
-          Dashboard teknisi — pemindaian QR code, kelola keranjang pengajuan, dan pantau riwayat pergerakan.
+          Dashboard teknisi — pemindaian QR code, kelola keranjang pengajuan,
+          dan pantau riwayat pergerakan.
         </p>
       </div>
 
       {/* Metric Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
         <div className="rounded-2xl border border-red-500/30 bg-gradient-to-b from-red-600/20 to-red-900/30 backdrop-blur-xl p-5 shadow-xl">
-          <p className="text-xs font-bold uppercase tracking-wider text-red-300">Item di Keranjang</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-red-300">
+            Item di Keranjang
+          </p>
           <p className="text-4xl font-extrabold text-white mt-1">
             {cartItems.length}
           </p>
         </div>
         <div className="rounded-2xl border border-blue-500/30 bg-gradient-to-b from-blue-600/20 to-blue-900/30 backdrop-blur-xl p-5 shadow-xl">
-          <p className="text-xs font-bold uppercase tracking-wider text-blue-300">Transaksi Saya (30 hari)</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-blue-300">
+            Transaksi Saya (30 hari)
+          </p>
           <p className="text-4xl font-extrabold text-white mt-1">
             {loading ? "…" : txCount}
           </p>
         </div>
         <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-xl p-5 shadow-xl">
-          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Sesi Teknisi Aktif</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+            Sesi Teknisi Aktif
+          </p>
           <p className="text-lg font-bold text-white mt-2 truncate">
             {namaTeknisi || user?.nama || "—"}
           </p>
@@ -149,7 +162,9 @@ export default function TeknisiDashboardView() {
             <div className="p-2 bg-telkomsat-red/20 rounded-xl border border-telkomsat-red/30">
               <ClipboardList className="w-5 h-5 text-telkomsat-red" />
             </div>
-            <h2 className="text-lg font-bold text-white">Aktivitas Transaksi Terakhir Saya</h2>
+            <h2 className="text-lg font-bold text-white">
+              Aktivitas Transaksi Terakhir Saya
+            </h2>
           </div>
           <Link
             href="/transaksi"
@@ -162,7 +177,9 @@ export default function TeknisiDashboardView() {
 
         <div className="p-6">
           {loading ? (
-            <p className="py-10 text-center text-xs text-gray-400">Memuat transaksi...</p>
+            <p className="py-10 text-center text-xs text-gray-400">
+              Memuat transaksi...
+            </p>
           ) : recentTx.length === 0 ? (
             <p className="py-10 text-center text-xs text-gray-400">
               Belum ada riwayat transaksi 30 hari terakhir.
@@ -181,8 +198,13 @@ export default function TeknisiDashboardView() {
                 </thead>
                 <tbody className="divide-y divide-white/5">
                   {recentTx.map((tx) => (
-                    <tr key={tx.id} className="hover:bg-white/5 transition-colors">
-                      <td className="py-3.5 px-2 text-xs text-gray-300">{formatDate(tx.createdAt)}</td>
+                    <tr
+                      key={tx.id}
+                      className="hover:bg-white/5 transition-colors"
+                    >
+                      <td className="py-3.5 px-2 text-xs text-gray-300">
+                        {formatDate(tx.createdAt)}
+                      </td>
                       <td className="py-3.5 px-2 font-semibold text-white">
                         {tx.namaItem || tx.idSparepart.slice(0, 8)}
                       </td>

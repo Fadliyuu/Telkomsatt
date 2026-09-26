@@ -1,7 +1,11 @@
 import { NextRequest } from "next/server";
 import { FieldValue, Timestamp } from "firebase-admin/firestore";
 import { adminAuth, adminDb } from "@/lib/server/firebaseAdmin";
-import { ValidationError, canManageUsers, validateUserCreatePayload } from "@/lib/server/validators";
+import {
+  ValidationError,
+  canManageUsers,
+  validateUserCreatePayload,
+} from "@/lib/server/validators";
 import {
   badRequestResponse,
   createdResponse,
@@ -57,14 +61,33 @@ function toAdminTimestamp(value?: string) {
   return value ? Timestamp.fromDate(new Date(value)) : null;
 }
 
+function usernameFromName(name: string) {
+  return name
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .split(/\s+/)[0]
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]/g, "");
+}
+
 export async function POST(request: NextRequest) {
   // Rate limit: 20 user creations per hour per IP
-  const rl = rateLimit(getClientIp(request), { limit: 20, windowMs: 60 * 60 * 1000 });
+  const rl = rateLimit(getClientIp(request), {
+    limit: 20,
+    windowMs: 60 * 60 * 1000,
+  });
   if (!rl.allowed) {
-    return new Response(JSON.stringify({ success: false, error: "Terlalu banyak permintaan. Coba lagi nanti." }), {
-      status: 429,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Terlalu banyak permintaan. Coba lagi nanti.",
+      }),
+      {
+        status: 429,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 
   try {
@@ -77,8 +100,24 @@ export async function POST(request: NextRequest) {
     try {
       payload = validateUserCreatePayload(await request.json());
     } catch (e) {
-      const msg = e instanceof ValidationError ? e.message : "Payload tidak valid";
+      const msg =
+        e instanceof ValidationError ? e.message : "Payload tidak valid";
       return badRequestResponse(msg);
+    }
+
+    const username = usernameFromName(payload.nama);
+    if (username.length < 2) {
+      return badRequestResponse(
+        "Nama depan tidak dapat digunakan sebagai username",
+      );
+    }
+    const usernameExists = await adminDb()
+      .collection("users")
+      .where("username", "==", username)
+      .limit(1)
+      .get();
+    if (!usernameExists.empty) {
+      return badRequestResponse("Username dari nama depan ini sudah digunakan");
     }
 
     const authUser = await adminAuth().createUser({
@@ -94,6 +133,7 @@ export async function POST(request: NextRequest) {
         .doc(authUser.uid)
         .set({
           nama: payload.nama,
+          username,
           email: payload.email,
           role: payload.role,
           status: payload.status,
@@ -110,7 +150,9 @@ export async function POST(request: NextRequest) {
         });
     } catch (error) {
       // Rollback Firebase Auth user if Firestore write fails
-      await adminAuth().deleteUser(authUser.uid).catch(() => undefined);
+      await adminAuth()
+        .deleteUser(authUser.uid)
+        .catch(() => undefined);
       throw error;
     }
 
@@ -125,12 +167,21 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   // Rate limit: 10 deletions per hour per IP
-  const rl = rateLimit(getClientIp(request), { limit: 10, windowMs: 60 * 60 * 1000 });
+  const rl = rateLimit(getClientIp(request), {
+    limit: 10,
+    windowMs: 60 * 60 * 1000,
+  });
   if (!rl.allowed) {
-    return new Response(JSON.stringify({ success: false, error: "Terlalu banyak permintaan. Coba lagi nanti." }), {
-      status: 429,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Terlalu banyak permintaan. Coba lagi nanti.",
+      }),
+      {
+        status: 429,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 
   try {
@@ -154,14 +205,11 @@ export async function DELETE(request: NextRequest) {
     // This preserves audit trail (transactions, reports) while preventing login.
     // If you need hard delete, do it from the server SDK directly — never expose to client.
     await adminAuth().updateUser(uid, { disabled: true });
-    await adminDb()
-      .collection("users")
-      .doc(uid)
-      .update({
-        status: "nonaktif",
-        deletedAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+    await adminDb().collection("users").doc(uid).update({
+      status: "nonaktif",
+      deletedAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
 
     return successResponse();
   } catch (error: unknown) {
@@ -185,14 +233,11 @@ export async function PATCH(request: NextRequest) {
     }
 
     await adminAuth().updateUser(uid, { disabled: false });
-    await adminDb()
-      .collection("users")
-      .doc(uid)
-      .update({
-        status: "aktif",
-        deletedAt: null,
-        updatedAt: FieldValue.serverTimestamp(),
-      });
+    await adminDb().collection("users").doc(uid).update({
+      status: "aktif",
+      deletedAt: null,
+      updatedAt: FieldValue.serverTimestamp(),
+    });
 
     return successResponse();
   } catch (error: unknown) {
@@ -202,19 +247,31 @@ export async function PATCH(request: NextRequest) {
 
 /** Set or reset a user's password. Admin Sistem only. */
 export async function PUT(request: NextRequest) {
-  const rl = rateLimit(`password:${getClientIp(request)}`, { limit: 30, windowMs: 60 * 60 * 1000 });
+  const rl = rateLimit(`password:${getClientIp(request)}`, {
+    limit: 30,
+    windowMs: 60 * 60 * 1000,
+  });
   if (!rl.allowed) {
-    return new Response(JSON.stringify({ success: false, error: "Terlalu banyak permintaan. Coba lagi nanti." }), {
-      status: 429,
-      headers: { "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Terlalu banyak permintaan. Coba lagi nanti.",
+      }),
+      {
+        status: 429,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 
   try {
     const actor = await requireSystemAdmin(request);
     if (!actor) return forbiddenResponse();
 
-    const body = (await request.json()) as { uid?: unknown; password?: unknown };
+    const body = (await request.json()) as {
+      uid?: unknown;
+      password?: unknown;
+    };
     const uid = typeof body.uid === "string" ? body.uid.trim() : "";
     const password = typeof body.password === "string" ? body.password : "";
     if (!uid) return badRequestResponse("uid wajib diisi");
