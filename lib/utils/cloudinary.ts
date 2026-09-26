@@ -52,7 +52,15 @@ export const uploadImage = async (
     throw new Error(error.error || "Failed to upload image");
   }
 
-  const data = await response.json();
+  const responseData = (await response.json()) as {
+    success?: boolean;
+    data?: { url?: string; publicId?: string };
+  };
+  const data = responseData.data;
+  if (!data?.url || !data.publicId) {
+    throw new Error("Respons upload gambar tidak lengkap");
+  }
+
   return {
     url: data.url,
     publicId: data.publicId,
