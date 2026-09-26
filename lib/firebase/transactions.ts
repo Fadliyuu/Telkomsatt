@@ -152,23 +152,13 @@ export const createTransaction = async (
           stokTotal: Math.max(0, stokTotal - transaction.jumlah),
           updatedAt: Timestamp.now(),
         });
-      } else if (transaction.jenisTransaksi === "IN") {
-        // IN = barang baru masuk ke gudang/base — tambah stokGudang & stokTotal
-        tx.update(sparepartRef, {
-          stokGudang: stokGudang + transaction.jumlah,
-          stokTotal: stokTotal + transaction.jumlah,
-          updatedAt: Timestamp.now(),
-        });
       } else if (
         transaction.jenisTransaksi === "RETURN" ||
         ((transaction.jenisTransaksi === "DISMANTLE" || transaction.jenisTransaksi === "FOUND") &&
           transaction.statusBarang === "Normal" &&
-          (transaction.lokasiTujuan?.toLowerCase().includes("gudang") ||
-           transaction.lokasiTujuan?.toLowerCase().includes("base") ||
-           transaction.lokasiTujuan?.toLowerCase().includes("regional 6") ||
-           !transaction.lokasiTujuan))
+          (transaction.lokasiTujuan?.toLowerCase().includes("gudang") || !transaction.lokasiTujuan))
       ) {
-        // RETURN / DISMANTLE (Bagus) / FOUND (Bagus) = item masuk ke base/gudang — tambah stokGudang
+        // RETURN / DISMANTLE (Bagus) / FOUND (Bagus) = item comes to gudang — increase stokGudang.
         tx.update(sparepartRef, {
           stokGudang: stokGudang + transaction.jumlah,
           updatedAt: Timestamp.now(),
@@ -325,23 +315,9 @@ async function updateSparepartItemStatus(
       if (lokasiTujuan) updatePayload.lokasiSaatIni = lokasiTujuan;
       break;
 
-    case "RETURN": {
-      updatePayload.lokasiSaatIni = lokasiTujuan || "Gudang Regional 6";
-      updatePayload.status = "Tersedia";
-      updatePayload.cariFisik = "Sesuai";
-      break;
-    }
-
-    case "IN": {
-      updatePayload.lokasiSaatIni = lokasiTujuan || "Gudang Regional 6";
-      updatePayload.status = "Tersedia";
-      updatePayload.cariFisik = "Sesuai";
-      break;
-    }
-
     case "FOUND": {
       const kondisi = item.kondisiBarang;
-      updatePayload.lokasiSaatIni = item.lokasiDitemukan || lokasiTujuan || "Gudang Regional 6";
+      updatePayload.lokasiSaatIni = item.lokasiDitemukan || lokasiTujuan;
       updatePayload.cariFisik = "Sesuai";
       updatePayload.status =
         kondisi === "Tidak Diketahui" ? "Perlu Pengecekan" : kondisi === "Rusak" ? "Rusak" : "Tersedia";
@@ -350,7 +326,7 @@ async function updateSparepartItemStatus(
 
     case "DISMANTLE": {
       const kondisi = item.kondisiDismantle;
-      updatePayload.lokasiSaatIni = lokasiTujuan || "Gudang Regional 6";
+      if (lokasiTujuan) updatePayload.lokasiSaatIni = lokasiTujuan;
       updatePayload.status =
         kondisi === "Rusak" ? "Rusak" : kondisi === "Tidak Diketahui" ? "Perlu Pengecekan" : "Tersedia";
       break;
@@ -712,7 +688,7 @@ export const getTransactions = async (
   filters?: {
     idSparepart?: string;
     namaTeknisi?: string;
-    jenisTransaksi?: "IN" | "OUT" | "MOVE" | "DAMAGE" | "RETURN" | "FOUND" | "DISMANTLE";
+    jenisTransaksi?: "OUT" | "MOVE" | "DAMAGE" | "RETURN" | "FOUND" | "DISMANTLE";
     requestedByUid?: string;
     startDate?: Date;
     endDate?: Date;
@@ -730,26 +706,22 @@ export const getTransactions = async (
       // Always include orderBy to use the composite index (idSparepart ASC, createdAt DESC).
       // This is required for pagination (startAfter) when maxLimit is null.
       q = query(
-        collection(db, COLLECTIONS.TRANSAKSI),
-        where("idSparepart", "==", filters.idSparepart),
-        orderBy("createdAt", "desc"),
-        limitQuery(maxLimit ?? 200)
-      );
-    } else if (filters?.requestedByUid) {
-      // For technician query: filter by requestedByUid to satisfy Firestore rules
-      // (resource.data.requestedByUid == auth.uid) without requiring custom composite indexes
-      q = query(
-        collection(db, COLLECTIONS.TRANSAKSI),
-        where("requestedByUid", "==", filters.requestedByUid),
-        limitQuery(maxLimit ?? 200)
-      );
-    } else {
-      if (filters?.startDate) {
-        q = query(q, where("createdAt", ">=", Timestamp.fromDate(filters.startDate)));
-      }
-      if (filters?.endDate) {
-        q = query(q, where("createdAt", "<=", Timestamp.fromDate(filters.endDate)));
-      }
+            collection(db, COLLECTIONS.TRANSAKSI),
+            where("idSparepart", "==", filters.idSparepart),
+            orderBy("createdAt", "desc"),
+            limitQuery(maxLimit ?? 200)
+          );
+    }
+    if (filters?.requestedByUid) {
+      q = !filters.idSparepart && !filters.startDate && !filters.endDate
+        ? query(collection(db, COLLECTIONS.TRANSAKSI), where("requestedByUid", "==", filters.requestedByUid), limitQuery(maxLimit ?? 200))
+        : query(q, where("requestedByUid", "==", filters.requestedByUid));
+    }
+    if (filters?.startDate) {
+      q = query(q, where("createdAt", ">=", Timestamp.fromDate(filters.startDate)));
+    }
+    if (filters?.endDate) {
+      q = query(q, where("createdAt", "<=", Timestamp.fromDate(filters.endDate)));
     }
 
     let snapshot = await getDocs(q);
@@ -758,16 +730,6 @@ export const getTransactions = async (
     while (maxLimit === null && snapshot.docs.length === 200) {
       snapshot = await getDocs(query(q, startAfter(snapshot.docs[snapshot.docs.length - 1])));
       rows.push(...mapFirestoreDocs<Transaksi>(snapshot.docs));
-    }
-
-    // In-memory date filter (ensures accuracy when requestedByUid query is used)
-    if (filters?.startDate) {
-      const startTime = filters.startDate.getTime();
-      rows = rows.filter((t) => t.createdAt.getTime() >= startTime);
-    }
-    if (filters?.endDate) {
-      const endTime = filters.endDate.getTime();
-      rows = rows.filter((t) => t.createdAt.getTime() <= endTime);
     }
 
     // In-memory filters (until composite indexes are added for these fields)

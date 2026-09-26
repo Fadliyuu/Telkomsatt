@@ -2,17 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, ClipboardCheck, FileText, Package, Users } from "lucide-react";
+import { ArrowRight, ClipboardCheck, FileText, Package, AlertTriangle } from "lucide-react";
 import { getTransactions } from "@/lib/firebase/transactions";
 import { getItemsPerluVerifikasiCount, getSparepartItemsCount } from "@/lib/firebase/sparepartItems";
-import { getUsers } from "@/lib/firebase/users";
 import { Transaksi } from "@/types";
 import { formatDate } from "@/lib/utils";
 
 export default function ManagerDashboardView() {
   const [pending, setPending] = useState(0);
   const [totalItems, setTotalItems] = useState(0);
-  const [userCount, setUserCount] = useState(0);
   const [transactions, setTransactions] = useState<Transaksi[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -21,15 +19,13 @@ export default function ManagerDashboardView() {
       try {
         const start = new Date();
         start.setDate(start.getDate() - 30);
-        const [pendingCount, itemCount, users, tx] = await Promise.all([
+        const [pendingCount, itemCount, tx] = await Promise.all([
           getItemsPerluVerifikasiCount(),
           getSparepartItemsCount(),
-          getUsers(),
           getTransactions({ startDate: start, endDate: new Date() }),
         ]);
         setPending(pendingCount);
         setTotalItems(itemCount);
-        setUserCount(users.length);
         setTransactions(tx.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()));
       } finally {
         setLoading(false);
@@ -45,17 +41,17 @@ export default function ManagerDashboardView() {
   }, [transactions]);
 
   const cards = [
-    { label: "Pending Approval", value: pending, icon: ClipboardCheck, href: "/spareparts/verifikasi" },
+    { label: "Menunggu Verifikasi", value: pending, icon: ClipboardCheck, href: "/transaksi?status=pending" },
     { label: "Transaksi 30 Hari", value: stats.total, icon: FileText, href: "/laporan" },
     { label: "Total Unit", value: totalItems, icon: Package, href: "/spareparts" },
-    { label: "Pengguna", value: userCount, icon: Users, href: "/users" },
+    { label: "Laporan Kerusakan", value: stats.damage, icon: AlertTriangle, href: "/laporan" },
   ];
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
         <h1 className="text-3xl font-bold text-telkomsat-black">Dashboard Manager</h1>
-        <p className="mt-1 text-telkomsat-gray">Ringkasan approval, transaksi tim, dan pengelolaan pengguna.</p>
+        <p className="mt-1 text-telkomsat-gray">Ringkasan operasional, transaksi, stok, dan laporan regional.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -104,11 +100,11 @@ export default function ManagerDashboardView() {
         <div className="rounded-xl border bg-white p-5 shadow-sm">
           <h2 className="text-lg font-bold text-telkomsat-black">Akses Cepat</h2>
           <div className="mt-4 space-y-3">
-            <Link href="/spareparts/verifikasi" className="flex items-center justify-between rounded-xl bg-telkomsat-gray-lighter/50 p-4 font-semibold hover:bg-telkomsat-gray-lighter">
-              Approval Permintaan <ArrowRight className="h-4 w-4 text-telkomsat-red" />
+            <Link href="/transaksi?status=pending" className="flex items-center justify-between rounded-xl bg-telkomsat-gray-lighter/50 p-4 font-semibold hover:bg-telkomsat-gray-lighter">
+              Pantau Pengajuan <ArrowRight className="h-4 w-4 text-telkomsat-red" />
             </Link>
-            <Link href="/users" className="flex items-center justify-between rounded-xl bg-telkomsat-gray-lighter/50 p-4 font-semibold hover:bg-telkomsat-gray-lighter">
-              Manajemen User <ArrowRight className="h-4 w-4 text-telkomsat-red" />
+            <Link href="/spareparts" className="flex items-center justify-between rounded-xl bg-telkomsat-gray-lighter/50 p-4 font-semibold hover:bg-telkomsat-gray-lighter">
+              Lihat Data Aset <ArrowRight className="h-4 w-4 text-telkomsat-red" />
             </Link>
           </div>
         </div>

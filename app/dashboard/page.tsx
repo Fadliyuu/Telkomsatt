@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import AdminLayout from "@/components/AdminLayout";
 import AdminGudangDashboardView from "@/components/dashboard/AdminGudangDashboardView";
 import SupervisorDashboardView from "@/components/dashboard/SupervisorDashboardView";
+import ManagerDashboardView from "@/components/dashboard/ManagerDashboardView";
+import DirekturDashboardView from "@/components/dashboard/DirekturDashboardView";
 import TeknisiDashboardView from "@/components/dashboard/TeknisiDashboardView";
 import ErrorState from "@/components/ErrorState";
 import { useAuthStore } from "@/lib/store/useAuthStore";
@@ -90,10 +92,26 @@ export default function DashboardPage() {
     );
   }
 
-  if (user.role === "supervisor" || user.role === "direktur" || user.role === "manager") {
+  if (user.role === "supervisor") {
     return (
       <AdminLayout>
         <SupervisorDashboardView />
+      </AdminLayout>
+    );
+  }
+
+  if (user.role === "manager") {
+    return (
+      <AdminLayout>
+        <ManagerDashboardView />
+      </AdminLayout>
+    );
+  }
+
+  if (user.role === "direktur") {
+    return (
+      <AdminLayout>
+        <DirekturDashboardView />
       </AdminLayout>
     );
   }

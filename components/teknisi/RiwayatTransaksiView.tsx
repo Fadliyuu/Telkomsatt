@@ -31,7 +31,6 @@ export default function RiwayatTransaksiView() {
   const [days, setDays] = useState(30);
 
   const teknisiName = namaTeknisi || user?.nama || "";
-  const isTeknisi = user?.role === "teknisi";
 
   const loadTransactions = useCallback(async () => {
     setLoading(true);
@@ -41,8 +40,7 @@ export default function RiwayatTransaksiView() {
       const rows = await getTransactions({
         startDate: start,
         endDate: new Date(),
-        namaTeknisi: isTeknisi ? undefined : (teknisiName || undefined),
-        requestedByUid: isTeknisi ? user?.id : undefined,
+        namaTeknisi: teknisiName || undefined,
       });
       setTransactions(
         rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
@@ -52,7 +50,7 @@ export default function RiwayatTransaksiView() {
     } finally {
       setLoading(false);
     }
-  }, [days, teknisiName, isTeknisi, user?.id]);
+  }, [days, teknisiName]);
 
   useEffect(() => {
     loadTransactions();

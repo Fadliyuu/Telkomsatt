@@ -217,6 +217,21 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
           { href: "/aktivitas", icon: Activity, label: "Aktivitas", exact: false },
           { href: "/profile", icon: UserRound, label: "Profil", exact: true },
         ];
+      case "manager":
+        return [
+          { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", exact: true },
+          { href: "/transaksi", icon: History, label: "Daftar Transaksi", exact: true },
+          { href: "/laporan", icon: FileText, label: "Laporan", exact: false },
+          { href: "/aktivitas", icon: Activity, label: "Aktivitas", exact: false },
+          { href: "/profile", icon: UserRound, label: "Profil", exact: true },
+        ];
+      case "direktur":
+        return [
+          { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", exact: true },
+          { href: "/laporan", icon: FileText, label: "Laporan", exact: false },
+          { href: "/aktivitas", icon: Activity, label: "Aktivitas", exact: false },
+          { href: "/profile", icon: UserRound, label: "Profil", exact: true },
+        ];
       default:
         return [
           { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard", exact: true },

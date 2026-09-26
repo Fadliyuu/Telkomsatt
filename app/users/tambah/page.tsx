@@ -121,7 +121,7 @@ export default function TambahUserPage() {
               Role Pengguna <span className="text-telkomsat-red">*</span>
             </label>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-              {USER_ROLES.filter((role) => role !== "direktur").map(
+              {USER_ROLES.map(
                 (role) => (
                   <button
                     key={role}
@@ -310,5 +310,4 @@ export default function TambahUserPage() {
     </AdminLayout>
   );
 }
-
 

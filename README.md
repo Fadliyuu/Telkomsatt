@@ -42,20 +42,19 @@ Dokumentasi ini mengikuti implementasi dalam repository. Diagram menjelaskan str
 6. [Diagram konteks](#6-diagram-konteks)
 7. [DFD level 0](#7-dfd-level-0)
 8. [DFD level 1](#8-dfd-level-1)
-9. [HIPO chart](#9-hipo-chart)
-10. [ERD dan kamus data](#10-erd-dan-kamus-data)
-11. [UML use case](#11-uml-use-case)
-12. [UML class diagram](#12-uml-class-diagram)
-13. [UML sequence diagram](#13-uml-sequence-diagram)
-14. [UML activity diagram, flowchart, dan state diagram](#14-uml-activity-diagram-flowchart-dan-state-diagram)
-15. [Struktur proyek, halaman, dan API](#15-struktur-proyek-halaman-dan-api)
-16. [Instalasi dan konfigurasi](#16-instalasi-dan-konfigurasi)
-17. [Panduan pengguna](#17-panduan-pengguna)
-18. [Deployment GitHub dan Netlify](#18-deployment-github-dan-netlify)
-19. [Build Android](#19-build-android)
-20. [Pengujian dan pemeliharaan](#20-pengujian-dan-pemeliharaan)
-21. [Troubleshooting](#21-troubleshooting)
-22. [Batasan dan referensi source](#22-batasan-dan-referensi-source)
+9. [ERD dan kamus data](#9-erd-dan-kamus-data)
+10. [UML use case](#10-uml-use-case)
+11. [UML class diagram](#11-uml-class-diagram)
+12. [UML sequence diagram](#12-uml-sequence-diagram)
+13. [Flowchart dan state diagram](#13-flowchart-dan-state-diagram)
+14. [Struktur proyek, halaman, dan API](#14-struktur-proyek-halaman-dan-api)
+15. [Instalasi dan konfigurasi](#15-instalasi-dan-konfigurasi)
+16. [Panduan pengguna](#16-panduan-pengguna)
+17. [Deployment GitHub dan Netlify](#17-deployment-github-dan-netlify)
+18. [Build Android](#18-build-android)
+19. [Pengujian dan pemeliharaan](#19-pengujian-dan-pemeliharaan)
+20. [Troubleshooting](#20-troubleshooting)
+21. [Batasan dan referensi source](#21-batasan-dan-referensi-source)
 
 Diagram menggunakan Mermaid dan dapat ditampilkan langsung di GitHub. Preview pada editor lokal membutuhkan dukungan Mermaid.
 
@@ -274,27 +273,22 @@ Pada jalur pengajuan teknisi, transaksi yang berhasil dikirim terlebih dahulu be
 
 ## 6. Diagram konteks
 
-Sistem digambarkan sebagai satu proses utama dengan empat entitas pengguna serta layanan eksternal pendukung (Firebase Authentication dan Cloudinary).
+Sistem digambarkan sebagai satu proses. Firebase Authentication dan Cloudinary ditampilkan sebagai layanan eksternal pendukung.
 
 ```mermaid
 flowchart LR
-    ADM[Admin Sistem] -->|Kredensial data akun perubahan hak akses dan permintaan aktivitas| SYS((Sistem Inventaris Telkomsat))
-    SYS -->|Hasil autentikasi pengelolaan akun dan informasi aktivitas| ADM
-
-    GD[Admin Gudang] -->|Kredensial data inventaris dan lokasi transaksi langsung keputusan verifikasi serta permintaan informasi dan notifikasi dan penandaan notifikasi dibaca| SYS
-    SYS -->|Hasil autentikasi informasi inventaris pengajuan hasil transaksi laporan dan notifikasi| GD
-
-    TK[Teknisi] -->|Kredensial berkas foto scan QR pengajuan mutasi permintaan riwayat permintaan notifikasi dan penandaan notifikasi dibaca| SYS
-    SYS -->|Hasil autentikasi detail unit hasil pengajuan riwayat transaksi sendiri dan notifikasi| TK
-
-    SP[Supervisor] -->|Kredensial filter pemantauan dan permintaan laporan| SYS
-    SYS -->|Hasil autentikasi ringkasan dashboard laporan inventaris dan log aktivitas| SP
-
-    SYS -->|Kredensial dan permintaan verifikasi sesi| FA[Firebase Authentication]
-    FA -->|Token autentikasi dan status verifikasi| SYS
-
-    SYS -->|Berkas foto unit dan bukti transaksi| CL[Cloudinary]
-    CL -->|URL foto tersimpan| SYS
+    ADM[Admin Sistem] -->|Data akun dan perubahan akses| SYS((Sistem Inventaris Telkomsat))
+    SYS -->|Hasil pengelolaan akun dan aktivitas| ADM
+    GD[Admin Gudang] -->|Master barang lokasi dan keputusan| SYS
+    SYS -->|Pengajuan stok dan dokumen| GD
+    TK[Teknisi] -->|Identitas scan dan pengajuan| SYS
+    SYS -->|Detail barang status dan riwayat sendiri| TK
+    SP[Supervisor] -->|Permintaan pemantauan dan filter| SYS
+    SYS -->|Dashboard laporan dan aktivitas| SP
+    SYS -->|Permintaan autentikasi dan sesi| FA[Firebase Authentication]
+    FA -->|Token atau hasil verifikasi| SYS
+    SYS -->|Gambar untuk disimpan| CL[Cloudinary]
+    CL -->|URL dan hasil pengelolaan gambar| SYS
 ```
 
 ## 7. DFD level 0
@@ -303,275 +297,115 @@ Konvensi dokumentasi ini: konteks adalah satu proses, DFD level 0 adalah proses 
 
 ```mermaid
 flowchart TB
-    ADM[Admin Sistem]
-    GD[Admin Gudang]
-    TK[Teknisi]
-    SP[Supervisor]
-
+    U[Pengguna terdaftar]
+    G[Admin Gudang]
     P1((1.0 Identitas dan akses))
     P2((2.0 Master inventaris))
     P3((3.0 Transaksi dan verifikasi))
     P4((4.0 Laporan dan pemantauan))
     P5((5.0 Notifikasi dan aktivitas))
-
     D1[(D1 users)]
     D2[(D2 spareparts sparepart_items lokasi)]
     D3[(D3 transaksi)]
-    D4[(D4 item_locks)]
+    D4[(D4 item_locks dan data keranjang)]
     D5[(D5 notifications aktivitas)]
-
     FA[Firebase Authentication]
     CL[Cloudinary]
-
-    %% 1.0 Identitas dan akses
-    ADM -->|Kredensial pengelolaan data dan hak akses akun| P1
-    GD -->|Kredensial login| P1
-    TK -->|Kredensial login| P1
-    SP -->|Kredensial login| P1
-    P1 -->|Kredensial dan permintaan sesi| FA
-    FA -->|Token autentikasi dan status sesi| P1
-    D1 -->|Profil hak akses dan status akun| P1
-    P1 -->|Pembaruan data akun| D1
-    P1 -->|Hasil autentikasi hasil pengelolaan akun dan akses menu| ADM
-    P1 -->|Hasil autentikasi dan status sesi| GD
-    P1 -->|Hasil autentikasi dan status sesi| TK
-    P1 -->|Hasil autentikasi dan status sesi| SP
-
-    %% 2.0 Master inventaris
-    GD -->|Data katalog unit fisik dan lokasi| P2
-    P2 -->|Berkas foto unit| CL
-    CL -->|URL foto tersimpan| P2
-    D2 -->|Data inventaris dan lokasi| P2
-    P2 -->|Pencatatan dan pembaruan data barang| D2
-    P2 -->|Detail informasi inventaris| GD
-
-    %% 3.0 Transaksi dan verifikasi
-    TK -->|Data QR pilihan item pengajuan mutasi berkas foto SPT dan tujuan| P3
-    GD -->|Transaksi langsung dan keputusan verifikasi| P3
-    P1 -->|Identitas sesi terautentikasi| P3
-    D1 -->|Profil peran dan status akun| P3
-    D2 -->|Data unit terkini dan stok katalog| P3
-    P3 -->|Pembaruan status lokasi unit dan stok| D2
-    D3 -->|Data transaksi terkini| P3
-    P3 -->|Pencatatan pengajuan dan hasil transaksi| D3
-    D4 -->|Status reservasi item| P3
-    P3 -->|Pencatatan dan pelepasan reservasi| D4
-    P3 -->|Berkas foto bukti transaksi| CL
-    CL -->|URL foto bukti| P3
-    P3 -->|Detail unit dan ringkasan hasil pengajuan per item| TK
-    P3 -->|Hasil pemrosesan transaksi dan daftar pending| GD
-
-    %% 4.0 Laporan dan pemantauan
-    TK -->|Permintaan riwayat transaksi sendiri| P4
-    GD -->|Permintaan laporan mutasi dan stok| P4
-    SP -->|Parameter filter dan periode laporan| P4
-    D2 -->|Data inventaris terkini| P4
+    U -->|Kredensial atau perubahan akun| P1
+    P1 <-->|Profil dan role| D1
+    P1 <-->|Token sesi dan hasil autentikasi| FA
+    P1 -->|Hasil autentikasi dan akses| U
+    G -->|Data master| P2
+    P2 <-->|Data barang dan lokasi| D2
+    P2 <-->|Gambar dan URL| CL
+    P2 -->|Detail master| G
+    U -->|Item tujuan SPT dan bukti| P3
+    G -->|Persetujuan atau penolakan| P3
+    D1 -->|Identitas dan role| P3
+    P3 <-->|Detail dan pembaruan item stok| D2
+    P3 <-->|Pengajuan dan hasil keputusan| D3
+    P3 <-->|Keranjang dan reservasi| D4
+    P3 <-->|Bukti foto dan URL| CL
+    P3 -->|Hasil pengajuan| U
+    P3 -->|Daftar pending dan hasil verifikasi| G
+    U -->|Filter sesuai hak akses| P4
+    D2 -->|Inventaris| P4
     D3 -->|Riwayat transaksi| P4
-    D5 -->|Data aktivitas dari notifications| P4
-    P4 -->|Riwayat transaksi sendiri| TK
-    P4 -->|Laporan inventaris dan mutasi| GD
-    P4 -->|Ringkasan dashboard laporan inventaris dan mutasi serta informasi aktivitas| SP
-
-    %% 5.0 Notifikasi dan aktivitas
-    P1 -->|Aksi autentikasi dan akun| P5
-    P2 -->|Aksi master inventaris| P5
-    P3 -->|Peristiwa mutasi dan verifikasi transaksi| P5
-    D5 -->|Daftar notifikasi dan log aktivitas| P5
-    P5 -->|Pencatatan notifikasi log aktivitas dan pembaruan status baca| D5
-    TK -->|Permintaan notifikasi dan penandaan notifikasi dibaca| P5
-    GD -->|Permintaan notifikasi dan penandaan notifikasi dibaca| P5
-    ADM -->|Pemantauan riwayat log aktivitas| P5
-    P5 -->|Notifikasi transaksi| TK
-    P5 -->|Notifikasi pengajuan dan transaksi| GD
-    P5 -->|Daftar log aktivitas sistem| ADM
+    D5 -->|Aktivitas| P4
+    P4 -->|Dashboard riwayat dan dokumen| U
+    P1 -->|Aksi akun yang dicatat| P5
+    P2 -->|Aksi master yang dicatat| P5
+    P3 -->|Peristiwa transaksi| P5
+    P5 <-->|Catatan dan status baca| D5
+    U -->|Permintaan notifikasi dan tandai dibaca| P5
+    P5 -->|Notifikasi| U
 ```
+
+`D4` mengelompokkan state keranjang klien/koleksi sesi dan reservasi Firestore secara konseptual. Tidak setiap perubahan keranjang otomatis dikirim ke Firestore.
 
 ## 8. DFD level 1
 
-Rincian **proses 3.0: transaksi dan verifikasi**, memodelkan pemrosesan per item untuk pengajuan teknisi maupun transaksi langsung Admin Gudang. Aliran masuk/keluar mengacu pada entitas luar dan penyimpanan data yang selaras dengan DFD level 0.
+Rincian **proses 3.0: transaksi dan verifikasi**, khususnya pengajuan teknisi. Data masuk/keluar mengacu pada aktor dan penyimpanan level 0.
 
 ```mermaid
 flowchart TB
     T[Teknisi]
     G[Admin Gudang]
-    P1((1.0 Identitas dan akses))
-    A((3.1 Identifikasi item dan bukti))
-    B((3.2 Validasi data transaksi))
-    C((3.3 Simpan pengajuan dan reservasi))
-    D((3.4 Ambil antrean pengajuan))
-    E((3.5 Proses keputusan dan transaksi langsung))
-    F((3.6 Sajikan hasil per item))
+    A((3.1 Identifikasi item dan keranjang))
+    B((3.2 Validasi identitas SPT dan tujuan))
+    C((3.3 Simpan pending dan reservasi))
+    D((3.4 Ambil pengajuan dan keputusan))
+    E((3.5 Terapkan keputusan gudang))
+    F((3.6 Sajikan hasil dan peristiwa))
     U[(D1 users)]
-    I[(D2 spareparts sparepart_items lokasi)]
+    I[(D2 inventaris dan lokasi)]
     TX[(D3 transaksi)]
-    K[(D4 item_locks)]
+    K[(D4 keranjang dan item_locks)]
     N((5.0 Notifikasi dan aktivitas))
     CL[Cloudinary]
-
-    %% Identitas sesi dari proses 1.0 (sesuai DFD Level 0)
-    P1 -->|Identitas sesi terautentikasi pengaju| B
-    P1 -->|Identitas sesi terautentikasi pemroses| E
-
-    %% 3.1 Identifikasi item dan bukti
-    T -->|QR pilihan item dan berkas foto| A
+    T -->|QR pilihan item dan bukti| A
     I -->|Identitas kondisi dan lokasi| A
-    A -->|Detail unit| T
-    A -->|Berkas foto| CL
-    CL -->|URL foto| A
-    A -->|Daftar item dan URL foto| B
-
-    %% 3.2 Validasi data transaksi
-    T -->|Jenis transaksi penerima SPT tujuan dan keterangan| B
-    G -->|Data transaksi langsung termasuk identitas item| B
-    U -->|Profil peran dan status akun pengaju| B
+    A <-->|Foto dan URL| CL
+    A <-->|Isi keranjang| K
+    A -->|Daftar item| B
+    T -->|Tujuan SPT keterangan| B
+    U -->|UID role dan status| B
     B -->|Kesalahan validasi| T
-    B -->|Kesalahan validasi| G
-    B -->|Pengajuan Teknisi tervalidasi| C
-    B -->|Transaksi langsung tervalidasi| E
-
-    %% 3.3 Simpan pengajuan dan reservasi (Khusus Pengajuan Teknisi)
-    K -->|Pemeriksaan status reservasi aktif| C
-    C -->|Pencatatan transaksi pending| TX
-    C -->|Kunci dokumen reservasi pending| K
-    C -->|Ringkasan hasil pengajuan per item| F
-
-    %% 3.4 Ambil antrean pengajuan (Review Gudang)
-    TX -->|Data pengajuan pending| D
-    I -->|Data unit untuk verifikasi fisik| D
-    D -->|Daftar pengajuan pending| G
-    G -->|Keputusan persetujuan atau penolakan serta alasan| D
-    D -->|Data pengajuan terpilih keputusan dan alasan| E
-
-    %% 3.5 Proses keputusan dan transaksi langsung
-    U -->|Profil peran dan status akun pemroses| E
-    I -->|Data inventaris terkini| E
-    K -->|Status dan pemilik reservasi| E
-    TX -->|Data dan status transaksi terkini| E
-    E -->|Pencatatan transaksi langsung atau pembaruan hasil keputusan| TX
-    E -->|Perubahan inventaris sesuai transaksi yang diproses| I
-    E -->|Pelepasan reservasi terkait pengajuan| K
-    E -->|Rincian hasil eksekusi transaksi| F
-
-    %% 3.6 Sajikan hasil per item dan peristiwa luar
-    F -->|Ringkasan hasil pengajuan per item| T
-    F -->|Ringkasan hasil pemrosesan per item| G
-    F -->|Peristiwa mutasi dan verifikasi transaksi| N
+    B -->|Pengajuan valid| C
+    K -->|Status reservasi| C
+    C -->|Pengajuan pending| TX
+    C -->|Reservasi item| K
+    C -->|Ringkasan pengajuan| F
+    TX -->|Pending| D
+    I -->|Barang untuk pemeriksaan| D
+    D -->|Daftar pengajuan| G
+    G -->|Keputusan dan alasan| D
+    D -->|Keputusan terpilih| E
+    U -->|Identitas verifikator| E
+    TX -->|Status terakhir| E
+    E -->|Completed atau rejected| TX
+    E -->|Perubahan item stok bila disetujui| I
+    E -->|Pelepasan reservasi| K
+    E -->|Hasil keputusan| F
+    F -->|Status transaksi| T
+    F -->|Hasil verifikasi| G
+    F -->|Peristiwa pemberitahuan dan audit| N
 ```
 
-> **Catatan Aliran Data DFD Level 1:**
-> - **Aliran Transaksi Langsung:** Admin Gudang memasukkan transaksi langsung ke proses `3.2 Validasi data transaksi`. Setelah divalidasi, aliran langsung menuju `3.5 Proses keputusan dan transaksi langsung` (mencatat transaksi `completed` dan memperbarui unit/katalog) tanpa melalui penyimpanan status `pending` pada proses `3.3`.
-> - **Penyimpanan D4 Reservasi Item:** Berfokus pada pencegahan pengajuan ganda (`item_locks`). Keranjang belanja dikelola pada memori antarmuka (*client state*) dan dialirkan sebagai daftar item dari `3.1` ke `3.2` tanpa dicatat permanen ke basis data sebelum transaksi diajukan.
-> - **Proses Penghubung di Luar Lingkup 3.0:** Proses `1.0 Identitas dan akses` serta `5.0 Notifikasi dan aktivitas` tetap merupakan proses internal sistem, tetapi berada di luar lingkup perincian proses 3.0. Proses 1.0 menyediakan identitas sesi terautentikasi, sedangkan proses 5.0 menerima peristiwa transaksi untuk kebutuhan notifikasi dan pencatatan aktivitas.
-> - **Hasil Per Item:** Proses 3.6 menyajikan ringkasan hasil pengajuan dan pemrosesan per item. Pemrosesan atomik per item melalui transaksi Firestore, serta kemungkinan keberhasilan sebagian item, merupakan karakteristik implementasi yang perlu didukung oleh kode aplikasi, bukan dibuktikan oleh DFD saja.
-
-## 9. HIPO chart
-
-HIPO (*Hierarchy plus Input-Process-Output*) memetakan struktur hierarki modul fungsional sistem secara terstruktur dari tingkat atas (*Visual Table of Contents / VTOC*) hingga rincian proses (*Input-Process-Output / IPO Diagram*).
-
-### A. Visual Table of Contents (VTOC)
-
-Diagram hierarki fungsi modul sistem membagi seluruh kemampuan aplikasi ke dalam modul-modul utama yang selaras dengan proses bisnis dan perancangan DFD:
-
-```mermaid
-flowchart TD
-    ROOT["0.0 Sistem Inventaris Sparepart Telkomsat"]
-
-    %% Modul Tingkat 1
-    M1["1.0 Modul Identitas & Akses"]
-    M2["2.0 Modul Master Inventaris"]
-    M3["3.0 Modul Transaksi & Verifikasi"]
-    M4["4.0 Modul Laporan & Pemantauan"]
-    M5["5.0 Modul Notifikasi & Log Aktivitas"]
-
-    ROOT --> M1
-    ROOT --> M2
-    ROOT --> M3
-    ROOT --> M4
-    ROOT --> M5
-
-    %% Sub-modul 1.0
-    M1_1["1.1 Autentikasi Pengguna"]
-    M1_2["1.2 Manajemen Sesi Cookie"]
-    M1_3["1.3 Pengelolaan Akun & Hak Akses"]
-    M1 --> M1_1
-    M1 --> M1_2
-    M1 --> M1_3
-
-    %% Sub-modul 2.0
-    M2_1["2.1 Kelola Katalog Sparepart"]
-    M2_2["2.2 Kelola Unit Fisik & Lokasi"]
-    M2_3["2.3 Pembuatan & Pencetakan QR Code"]
-    M2_4["2.4 Impor Data Excel & OCR"]
-    M2 --> M2_1
-    M2 --> M2_2
-    M2 --> M2_3
-    M2 --> M2_4
-
-    %% Sub-modul 3.0
-    M3_1["3.1 Identifikasi QR & Bukti Fisik"]
-    M3_2["3.2 Validasi Data Transaksi"]
-    M3_3["3.3 Pengajuan & Reservasi Pending"]
-    M3_4["3.4 Verifikasi & Keputusan Gudang"]
-    M3_5["3.5 Pemrosesan Transaksi Langsung"]
-    M3_6["3.6 Pengunduhan Surat Jalan & BA"]
-    M3 --> M3_1
-    M3 --> M3_2
-    M3 --> M3_3
-    M3 --> M3_4
-    M3 --> M3_5
-    M3 --> M3_6
-
-    %% Sub-modul 4.0
-    M4_1["4.1 Dashboard Analitik per Role"]
-    M4_2["4.2 Laporan Mutasi & Stok Inventaris"]
-    M4_3["4.3 Riwayat Transaksi Teknisi"]
-    M4_4["4.4 Ekspor Dokumen Laporan PDF/Excel"]
-    M4 --> M4_1
-    M4 --> M4_2
-    M4 --> M4_3
-    M4 --> M4_4
-
-    %% Sub-modul 5.0
-    M5_1["5.1 Pembuatan Notifikasi Transaksi"]
-    M5_2["5.2 Penandaan Status Baca Notifikasi"]
-    M5_3["5.3 Pencatatan Audit Log Aktivitas"]
-    M5 --> M5_1
-    M5 --> M5_2
-    M5 --> M5_3
-```
-
-### B. Tabel Input-Process-Output (IPO)
-
-Tabel berikut merangkum hubungan masukan (*Input*), tahapan pemrosesan (*Process*), dan keluaran (*Output*) untuk setiap modul utama pada sistem:
-
-| Kode Modul | Nama Modul | Masukan (*Input*) | Pemrosesan (*Process*) | Keluaran (*Output*) |
-|---|---|---|---|---|
-| **1.0** | **Identitas & Akses** | Email, password, ID Token Firebase, data profil akun pengguna baru/edit. | 1. Verifikasi kredensial via Firebase Authentication.<br>2. Pembuatan dan validasi session cookie server (`__session`).<br>3. Pemetaan *Role-Based Access Control* (RBAC) dan otorisasi menu. | Status autentikasi, cookie sesi, profil pengguna, dan hak akses antarmuka. |
-| **2.0** | **Master Inventaris** | Nama perangkat, serial number (SN), tagging, kategori, lokasi default/saat ini, foto unit fisik, file Excel inventaris, gambar label/tabel fisik. | 1. Validasi keunikan dan format SN/tagging.<br>2. Pengunggahan gambar fisik ke Cloudinary.<br>3. Pembuatan URL identifikasi QR unit (`/scan/<id>`).<br>4. Ekstraksi data tabel gambar via mesin OCR (Tesseract) dan parser Excel (SheetJS).<br>5. Penyimpanan dokumen ke Firestore `spareparts` dan `sparepart_items`. | Dokumen katalog, data unit fisik terdaftar, label QR Code (PNG/cetak), hasil preview & rekap impor. |
-| **3.0** | **Transaksi & Verifikasi** | Hasil scan QR unit, pilihan tindakan (`MOVE`, `DAMAGE`, dll.), foto bukti fisik, nomor SPT, lokasi tujuan, identitas penerima, batch scan gudang, keputusan verifikasi (setuju/tolak) beserta alasan. | 1. Resolusi identitas unit dan pengecekan reservasi pending (`item_locks`).<br>2. Pengunggahan bukti foto kerusakan/mutasi ke Cloudinary.<br>3. Validasi kelengkapan form (wajib SPT untuk OUT/MOVE).<br>4. Pencatatan transaksi `pending` dan penguncian unit atomik via Firestore Transaction.<br>5. Eksekusi keputusan verifikasi Admin Gudang: pembaruan status unit, penyesuaian stok katalog, pembaruan status transaksi (`completed`/`rejected`), dan pelepasan kunci reservasi.<br>6. Pemrosesan transaksi langsung Admin Gudang batch (`submitAdminScanBatch`).<br>7. Pembuatan dokumen PDF Surat Jalan dan Berita Acara (BA). | Transaksi tercatat (`pending`/`completed`/`rejected`), pembaruan lokasi dan kondisi unit fisik, penyesuaian stok gudang/total, dokumen PDF Surat Jalan dan Berita Acara. |
-| **4.0** | **Laporan & Pemantauan** | Parameter filter tanggal, jenis transaksi, teknisi, lokasi, status barang, pilihan format ekspor (PDF/Excel). | 1. Pengambilan riwayat transaksi terindeks dan data unit fisik.<br>2. Scoping keamanan data riwayat berdasarkan `requestedByUid` untuk akun Teknisi.<br>3. Agregasi ringkasan data inventaris dan statistik mutasi untuk dashboard.<br>4. Pembentukan tabel dokumen laporan PDF dengan layout kop/logo Telkomsat resmi dan workbook Excel. | Tampilan dashboard analitik sesuai role, tabel data transaksi tersaring, berkas unduhan laporan mutasi inventaris (PDF/Excel). |
-| **5.0** | **Notifikasi & Log Aktivitas** | Pemicu peristiwa transaksi baru, perubahan status verifikasi, penandaan baca notifikasi, metadata aksi sistem (aktor, tipe aksi, target, waktu). | 1. Pembuatan dokumen notifikasi ke koleksi `notifications` bagi pihak terkait.<br>2. Pembaruan flag baca notifikasi per pengguna.<br>3. Pencatatan jejak audit sistem ke koleksi `aktivitas` melalui helper audit (*best effort*). | Daftar notifikasi transaksi pengguna, pembaruan badge notifikasi belum dibaca, daftar rekam jejak audit log aktivitas sistem. |
-
-## 10. ERD dan kamus data
+## 9. ERD dan kamus data
 
 Firestore adalah database dokumen. ERD menunjukkan **relasi logis**; FK bukan foreign key SQL yang otomatis ditegakkan database. ID dokumen ditampilkan sebagai `id` agar mudah dibaca.
 
 ```mermaid
 erDiagram
-    USERS o|..o{ TRANSAKSI : mengajukan
-    USERS o|..o{ TRANSAKSI : menyetujui
-    USERS o|..o{ TRANSAKSI : menolak
-    USERS o|..o{ AKTIVITAS : melakukan
-
-    SPAREPARTS o|..o{ SPAREPART_ITEMS : mengelompokkan
-
-    SPAREPART_ITEMS o|..o{ TRANSAKSI : referensi_unit
-    SPAREPARTS o|..o{ TRANSAKSI : referensi_katalog_alternatif
-
-    SPAREPART_ITEMS ||--o| ITEM_LOCKS : memiliki_reservasi
-    TRANSAKSI ||..o| ITEM_LOCKS : memiliki_reservasi_pending
-    USERS o|..o{ ITEM_LOCKS : mengajukan_reservasi
-
+    USERS ||--o{ TRANSAKSI : mengajukan
+    USERS o|--o{ TRANSAKSI : memverifikasi
+    USERS ||--o{ AKTIVITAS : melakukan
+    SPAREPARTS o|--o{ SPAREPART_ITEMS : mengelompokkan
+    SPAREPART_ITEMS o|--o{ TRANSAKSI : referensi_item
+    SPAREPARTS o|--o{ TRANSAKSI : fallback_katalog
+    TRANSAKSI ||--o| ITEM_LOCKS : reservasi_pending
+    SESSION_KERANJANG ||--o{ SESSION_KERANJANG_ITEM : memuat
     USERS {
         string id PK
         string email
@@ -603,7 +437,7 @@ erDiagram
     }
     TRANSAKSI {
         string id PK
-        string idSparepart "ID unit atau katalog sesuai jalur"
+        string idSparepart FK
         string jenisTransaksi
         string nomorSpt
         string statusTransaksi
@@ -620,7 +454,7 @@ erDiagram
         timestamp createdAt
     }
     ITEM_LOCKS {
-        string itemId PK "ID dokumen sama dengan ID unit"
+        string itemId PK
         string transactionId FK
         string requestedByUid FK
         string status
@@ -632,6 +466,21 @@ erDiagram
         string tipe
         string alamat
         string keterangan
+    }
+    SESSION_KERANJANG {
+        string id PK
+        string sessionToken
+        string namaTeknisi
+        string status
+        timestamp createdAt
+    }
+    SESSION_KERANJANG_ITEM {
+        string id PK
+        string idSessionKeranjang FK
+        string idSparepart FK
+        string jenisAksi
+        string lokasiDitemukan
+        string kondisiDismantle
     }
     NOTIFICATIONS {
         string id PK
@@ -658,16 +507,12 @@ erDiagram
 
 ### Penjelasan relasi
 
-> **Catatan:** Diagram menampilkan atribut utama dan hubungan logis antardokumen. Referensi transaksi menuju unit fisik atau katalog bersifat alternatif sesuai jalur pencatatan. ID dokumen tidak selalu disimpan kembali sebagai atribut. Hubungan antardokumen tidak menunjukkan penerapan batasan *foreign key* otomatis oleh Cloud Firestore.
-> Garis putus-putus (`..`) menunjukkan hubungan *non-identifying* (entitas anak memiliki identitas/ID independen), sedangkan garis penuh (`--`) pada `ITEM_LOCKS` menunjukkan hubungan *identifying* karena ID dokumen reservasi sama persis dengan ID unit fisik.
-
 - `users/{uid}` memakai UID Firebase Authentication. Password dikelola Authentication, bukan disimpan dalam dokumen pengguna.
 - `sparepart_items.idSparepart` dapat kosong untuk unit tanpa katalog.
-- `transaksi.idSparepart` menunjuk ke ID barang fisik (`sparepart_items`), dengan referensi katalog alternatif (`spareparts`) untuk alur non-SN/legacy. Dua relasi pada ERD adalah alternatif referensi logis, bukan dua FK wajib sekaligus.
+- `transaksi.idSparepart` biasanya ID barang fisik, tetapi helper masih memiliki fallback ID katalog. Dua relasi pada ERD adalah alternatif referensi, bukan dua FK wajib sekaligus.
 - Lokasi pada item/transaksi disimpan sebagai string; tidak semuanya merupakan ID koleksi `lokasi`.
-- `item_locks/{itemId}` merupakan reservasi pengajuan pending (ID dokumen sama dengan ID unit fisik), dilepas setelah keputusan (approval/rejection).
+- `item_locks/{itemId}` merupakan reservasi pengajuan pending, dilepas setelah keputusan.
 - Penerima notifikasi berupa array UID/role, bukan tabel penghubung relasional.
-- Keranjang operasional pada aplikasi klien dikelola melalui local state browser (`useCartStore`); koleksi `session_keranjang` bersifat opsional/draft sehingga tidak disertakan dalam ERD inti skripsi.
 - Model TypeScript umumnya memakai `Date`; Firestore memakai timestamp dan helper mengonversinya.
 
 | Koleksi | Isi utama | Model |
@@ -678,13 +523,13 @@ erDiagram
 | `lokasi` | Master lokasi | `Lokasi` |
 | `transaksi` | Pengajuan dan keputusan | `Transaksi` |
 | `item_locks` | Reservasi pending | Payload helper transaksi |
+| `session_keranjang` | Sesi tersimpan | `SessionKeranjang` |
+| `session_keranjang_item` | Item sesi tersimpan | `SessionKeranjangItem` |
 | `notifications` | Isi, target, pembaca | `AppNotification` |
 | `aktivitas` | Aksi, aktor, target, waktu | `AuditLogItem` |
-| `session_keranjang` | Draft keranjang (opsional) | `SessionKeranjang` |
-| `session_keranjang_item` | Item draft keranjang (opsional) | `SessionKeranjangItem` |
 | `teknisi_guest` | Koleksi legacy | Ditolak rules saat ini |
 
-## 11. UML use case
+## 10. UML use case
 
 Mermaid tidak menyediakan sintaks use case UML khusus. Diagram ini memakai flowchart dengan oval sebagai representasi use case dan aktor di luar batas sistem.
 
@@ -739,7 +584,7 @@ flowchart LR
 | Verifikasi | Admin Gudang dan transaksi pending | Completed/rejected dengan identitas verifikator |
 | Laporan | Role mempunyai akses | Ringkasan/dokumen sesuai filter |
 
-## 12. UML class diagram
+## 11. UML class diagram
 
 Source terutama memakai interface TypeScript dan fungsi. Kotak layanan adalah pengelompokan konseptual fungsi, bukan klaim adanya class OOP dengan nama tersebut pada source.
 
@@ -809,7 +654,7 @@ classDiagram
     TransactionService ..> SparepartItem : persetujuan
 ```
 
-## 13. UML sequence diagram
+## 12. UML sequence diagram
 
 ### A. Login dan sesi server
 
@@ -901,418 +746,36 @@ sequenceDiagram
     end
 ```
 
-## 14. UML activity diagram, flowchart, dan state diagram
+## 13. Flowchart dan state diagram
 
-Diagram aktivitas (Activity Diagram) memodelkan alur kerja sistem operasional (*workflow*) menggunakan partisi (*swimlanes*) yang memisahkan tanggung jawab antara pengguna/aktor, antarmuka sistem (Web & Android), dan basis data Firestore beserta layanan pendukungnya.
-
-> **Catatan Notasi:** Diagram menggunakan sintaks `flowchart TD` dengan pengelompokan `subgraph` untuk memvisualisasikan partisi tanggung jawab (*activity partitions / swimlanes*) secara terstruktur dan terbaca langsung pada repositori. Garis penuh (`-->`) menunjukkan urutan alur kegiatan antartindakan, sedangkan garis putus-putus (`-.->`) menunjukkan hubungan penulisan atau penyimpanan data ke basis data.
-
-### A. Activity diagram alur sistem (Project Overview)
-
-Diagram ini menggambarkan alur kerja global seluruh modul aplikasi Telkomsat dari proses autentikasi terpusat hingga pembagian jalur operasional mandiri sesuai peran pengguna (*role-based access*).
+### Flowchart teknisi
 
 ```mermaid
 flowchart TD
-    subgraph USR["Pengguna (Aktor)"]
-        U_START([Mulai]) --> U_OPEN[Buka aplikasi web atau Android]
-        U_OPEN --> U_LOGIN[Input email dan kata sandi]
-        U_DASH[Akses dashboard sesuai peran]
-        
-        %% Percabangan alur mandiri per peran dengan simpul keputusan
-        U_DASH --> U_ROLE{Peran aktif pengguna?}
-        U_ROLE -->|Teknisi| T_PATH[Teknisi: Pindai QR unit, susun keranjang, dan kirim pengajuan]
-        U_ROLE -->|Admin Gudang| G_PATH[Admin Gudang: Kelola inventaris, verifikasi pending, atau transaksi langsung]
-        U_ROLE -->|Supervisor| S_PATH[Supervisor: Pantau dashboard inventaris dan ekspor laporan]
-        U_ROLE -->|Admin Sistem| A_PATH[Admin Sistem: Kelola akun pengguna dan pantau aktivitas sistem]
-        
-        T_PATH --> U_LOGOUT[Pilih keluar / logout]
-        G_PATH --> U_LOGOUT
-        S_PATH --> U_LOGOUT
-        A_PATH --> U_LOGOUT
-        U_END([Selesai])
-    end
-
-    subgraph SYS["Sistem Aplikasi Telkomsat"]
-        U_LOGIN --> S_VERIFY[Verifikasi email dan kata sandi]
-        S_CHECK{Autentikasi berhasil?}
-        S_CHECK -->|Tidak| S_ERR[Tampilkan pesan kesalahan login]
-        S_ERR --> U_LOGIN
-        S_CHECK -->|Ya| S_FETCH[Ambil profil dan peran pengguna]
-        S_ROUTE[Tampilkan dashboard sesuai hak akses] --> U_DASH
-        
-        U_LOGOUT --> S_LOGOUT[Akhiri sesi pengguna dan kembali ke halaman login]
-        S_LOGOUT --> U_END
-    end
-
-    subgraph CLD["Firebase & Cloud Services"]
-        S_VERIFY --> C_AUTH[Pemeriksaan akun di Firebase Authentication]
-        C_AUTH --> S_CHECK
-        S_FETCH --> C_USER[Baca dokumen profil pengguna di Firestore]
-        C_USER --> S_ROUTE
-        T_PATH -.-> C_TX[(Penyimpanan transaksi pengajuan & reservasi)]
-        G_PATH -.-> C_STOCK[(Pembaruan data unit fisik & stok katalog)]
-    end
+    START([Mulai]) --> LOGIN{Sudah login?}
+    LOGIN -->|Tidak| AUTH[Login dan buat sesi]
+    AUTH --> LOGIN
+    LOGIN -->|Ya| SCAN[Scan QR atau pilih item]
+    SCAN --> EXISTS{Item ditemukan?}
+    EXISTS -->|Tidak| FIX[Periksa QR atau laporkan ke gudang]
+    FIX --> SCAN
+    EXISTS -->|Ya| CART[Tambah item dan pilih aksi]
+    CART --> FORM[Isi tujuan SPT bila wajib dan keterangan]
+    FORM --> VALID{Input valid?}
+    VALID -->|Tidak| FORM
+    VALID -->|Ya| LOCK{Ada pending aktif?}
+    LOCK -->|Ya| WAIT[Tinjau pengajuan yang ada]
+    WAIT --> FINISH([Selesai])
+    LOCK -->|Tidak| SUBMIT[Simpan pending dan reservasi]
+    SUBMIT --> REVIEW[Admin Gudang memeriksa]
+    REVIEW --> DECISION{Disetujui?}
+    DECISION -->|Ya| OK[Completed dan pembaruan item stok]
+    DECISION -->|Tidak| NO[Rejected dan alasan]
+    OK --> RELEASE[Lepas reservasi]
+    NO --> RELEASE
+    RELEASE --> HISTORY[Tampilkan riwayat]
+    HISTORY --> FINISH
 ```
-
-> **Catatan Alur:** Pengguna menjalankan cabang operasional sesuai peran aktif dan hak aksesnya. Pencatatan pengajuan tidak langsung mengubah stok. Pembaruan data unit dan penyesuaian stok dilakukan pada proses yang berhasil menerapkan perubahan inventaris sesuai aturan transaksi.
-
-### B. Activity diagram pengajuan dan verifikasi transaksi
-
-Diagram ini memodelkan siklus transaksi mutasi atau kerusakan unit barang yang diajukan oleh Teknisi dan diverifikasi oleh Admin Gudang, dilengkapi mekanisme penguncian unit (*reservation lock*) untuk mencegah pengajuan ganda secara bersamaan.
-
-```mermaid
-flowchart TD
-    subgraph TEK["Teknisi"]
-        T_START([Mulai]) --> T_SCAN[Pindai QR Code unit fisik di menu /scan]
-        T_SCAN --> T_ADD[Pilih jenis transaksi yang tersedia bagi Teknisi & masukkan ke keranjang]
-        T_ADD --> T_CART[Buka halaman Keranjang Permintaan]
-        T_CART --> T_FORM[Lengkapi data wajib sesuai jenis transaksi, catatan, dan foto bukti]
-        T_FORM --> T_SUBMIT[Klik tombol Kirim Pengajuan]
-        T_NOTIF[Terima notifikasi status pengajuan] --> T_HIST[Buka menu Riwayat Transaksi]
-        T_HIST --> T_END([Selesai])
-    end
-
-    subgraph SYS["Sistem Aplikasi Telkomsat"]
-        T_SUBMIT --> S_VAL{Data pengajuan valid?}
-        S_VAL -->|Tidak| S_ERR_FORM[Tampilkan pesan validasi formulir]
-        S_ERR_FORM --> T_FORM
-        S_VAL -->|Ya| S_LOCK_CHK[Periksa reservasi item pada database]
-        
-        S_IS_LOCKED{Ada reservasi pending aktif?}
-        S_IS_LOCKED -->|Ya| S_ERR_LOCK[Tolak pengajuan: Item sedang memiliki pengajuan aktif]
-        S_ERR_LOCK --> T_END
-        S_IS_LOCKED -->|Tidak| S_CREATE_TX[Simpan transaksi berstatus pending dan buat reservasi item]
-        
-        S_CREATE_TX --> S_NOTIF_ADM[Kirim notifikasi pengajuan ke Admin Gudang]
-        
-        S_REJECT[Catat penolakan, simpan alasan, dan lepaskan reservasi]
-        
-        S_CHK_UNIT[Periksa status pengajuan dan kondisi unit]
-        S_CHK_UNIT --> S_ELIGIBLE{Memenuhi ketentuan?}
-        S_ELIGIBLE -->|Ya| S_APPROVE[Proses persetujuan, perbarui status/stok, dan lepaskan reservasi]
-        S_ELIGIBLE -->|Tidak| S_FAIL[Tampilkan keterangan kegagalan kepada Admin Gudang]
-        S_FAIL --> G_REVIEW
-        
-        S_REJECT --> S_NOTIF_TEK[Kirim notifikasi hasil keputusan ke Teknisi]
-        S_APPROVE --> S_NOTIF_TEK
-        S_NOTIF_TEK --> T_NOTIF
-    end
-
-    subgraph DB["Firestore Database"]
-        S_LOCK_CHK --> D_LOCK[(Koleksi item_locks)]
-        D_LOCK --> S_IS_LOCKED
-        S_CREATE_TX -.-> D_TX[(Koleksi transaksi & item_locks)]
-        S_REJECT -.-> D_TX
-        S_APPROVE -.-> D_ITEMS[(Koleksi sparepart_items & spareparts)]
-        S_APPROVE -.-> D_TX
-    end
-
-    subgraph ADM["Admin Gudang"]
-        S_NOTIF_ADM --> G_OPEN[Buka menu Approval Transaksi /spareparts/verifikasi]
-        G_OPEN --> G_REVIEW[Tinjau data unit fisik, kelengkapan SPT, catatan, dan foto]
-        G_REVIEW --> G_DECIDE{Keputusan verifikasi?}
-        G_DECIDE -->|Tolak| G_INPUT_REASON[Isi alasan penolakan]
-        G_INPUT_REASON --> S_REJECT
-        G_DECIDE -->|Setujui| G_APPROVE_ACT[Pilih setujui pengajuan]
-        G_APPROVE_ACT --> S_CHK_UNIT
-    end
-```
-
-> **Catatan Ruang Lingkup & Atomisitas:** Alur pemrosesan setelah pengiriman pengajuan ditampilkan untuk satu unit barang. Pemeriksaan reservasi dan pembuatan transaksi pending dilaksanakan dalam satu transaksi basis data atomik per unit (`runTransaction`) untuk mencegah konflik konkurensi (*race condition*). Pada persetujuan yang berhasil, sistem mengubah `statusTransaksi` menjadi `completed`, memperbarui data unit pada `sparepart_items`, menyesuaikan jumlah stok pada `spareparts` apabila diperlukan sesuai aturan jenis transaksi, serta melepaskan reservasi pada `item_locks`. Pada penolakan yang berhasil, sistem mencatat status `rejected` beserta alasannya dan melepaskan reservasi tanpa menerapkan perubahan barang maupun stok yang diajukan.
-
-### C. Activity diagram transaksi langsung Admin Gudang
-
-Diagram ini menggambarkan pemrosesan tindakan inventaris secara langsung oleh Admin Gudang, meliputi penyerahan, kerusakan, penerimaan, dan pembaruan data. Transaksi yang berhasil diproses dicatat sebagai selesai tanpa melalui tahap pengajuan dan persetujuan terpisah. Dokumen dibuat sesuai kebutuhan tindakan.
-
-```mermaid
-flowchart TD
-    subgraph ADM["Admin Gudang"]
-        A_START([Mulai]) --> A_OPEN[Buka menu Scan Gudang /scan/gudang]
-        A_OPEN --> A_SCAN[Pindai multi-QR unit fisik atau input manual identitas barang]
-        A_SCAN --> A_MODE[Pilih aksi operasional gudang: Penyerahan, Kerusakan, Penerimaan, atau Pembaruan Data]
-        A_MODE --> A_INPUT[Lengkapi data wajib sesuai tindakan yang dipilih]
-        A_INPUT --> A_SUBMIT[Klik tombol Proses & Simpan Transaksi]
-        
-        A_RESULT[Tinjau daftar item yang berhasil dan gagal diproses]
-        A_PDF[Unduh dokumen Berita Acara / Surat Jalan PDF]
-        A_PDF --> A_IS_HANDOVER{Tindakan memerlukan serah terima fisik?}
-        A_IS_HANDOVER -->|Ya| A_HANDOVER[Lakukan serah terima fisik item yang berhasil diproses]
-        A_IS_HANDOVER -->|Tidak| END_PROC([Selesai])
-    end
-
-    subgraph SYS["Sistem Aplikasi Telkomsat"]
-        A_SUBMIT --> S_VAL{Data dan otorisasi valid?}
-        S_VAL -->|Tidak| S_ERR[Tampilkan keterangan kesalahan data atau penolakan akses]
-        S_ERR --> A_INPUT
-        S_VAL -->|Ya| S_BATCH[Proses penyimpanan transaksi langsung per item]
-        
-        S_BATCH --> S_DB_WRITE[Perbarui data unit dan stok katalog sesuai aturan jenis transaksi]
-        S_DB_WRITE --> S_AUDIT[Catat audit log ke koleksi aktivitas]
-        S_AUDIT --> S_REPORT[Tampilkan daftar item berhasil dan gagal]
-        S_REPORT --> A_RESULT
-        
-        A_RESULT --> S_HAS_SUCCESS{Ada item berhasil diproses?}
-        S_HAS_SUCCESS -->|Tidak| END_PROC
-        S_HAS_SUCCESS -->|Ya| S_CHK_DOC{Tindakan memerlukan dokumen?}
-        S_CHK_DOC -->|Ya| S_GEN_DOC[Buat dokumen berdasarkan item yang berhasil]
-        S_GEN_DOC --> A_PDF
-        S_CHK_DOC -->|Tidak| A_IS_HANDOVER
-    end
-
-    subgraph DB["Firestore Database"]
-        S_DB_WRITE -.-> D_ITEMS[(sparepart_items: pembaruan status dan lokasi)]
-        S_DB_WRITE -.-> D_SP[(spareparts: penyesuaian stok sesuai aturan mutasi)]
-        S_DB_WRITE -.-> D_TX[(transaksi: pencatatan transaksi berstatus completed)]
-        S_AUDIT -.-> D_LOG[(aktivitas: pencatatan audit log)]
-    end
-
-    subgraph REC["Pihak Serah Terima (Teknisi / Perwakilan Site)"]
-        A_HANDOVER --> R_RECV[Periksa barang dan tandatangani dokumen apabila diperlukan]
-        R_RECV --> END_PROC
-    end
-```
-
-> **Catatan:** Pemrosesan dilakukan per unit barang. Transaksi yang berhasil dicatat dengan status `completed`. Perubahan lokasi, kondisi unit, dan jumlah stok mengikuti aturan tindakan serta keadaan unit sebelum dan sesudah pemrosesan. Sistem menampilkan hasil pemrosesan masing-masing unit. Dokumen dan serah terima fisik hanya dilakukan apabila diperlukan.
-
-### D. Flowchart sistem
-
-Berikut adalah empat diagram alir (*flowchart*) terperinci yang memodelkan logika eksekusi algoritma dan percabangan keputusan operasional utama pada aplikasi Telkomsat:
-
-#### 1. Flowchart login dan hak akses
-
-Diagram ini memodelkan proses autentikasi akun, validasi kredensial melalui Firebase Auth, pembentukan sesi server via `/api/auth/session`, pemeriksaan keberadaan dan status aktif profil pengguna di koleksi `users`, hingga pengarahan antarmuka dashboard sesuai hak akses (*Role-Based Access Control*).
-
-```mermaid
-flowchart TD
-    A([Mulai]) --> B[Buka halaman portal / login]
-    B --> C[Input email dan password]
-    C --> D{Kredensial lengkap?}
-    D -->|Tidak| E[Tampilkan pesan peringatan kelengkapan input]
-    E --> C
-    D -->|Ya| F[Kirim permintaan autentikasi ke Firebase Auth]
-    F --> G{Kredensial valid?}
-    G -->|Tidak| H[Tampilkan pesan kegagalan autentikasi]
-    H --> C
-    G -->|Ya| I[Dapatkan ID Token Firebase]
-    I --> J[Panggil API /api/auth/session untuk buat session cookie __session]
-    J --> K{Cookie sesi berhasil dibuat?}
-    K -->|Tidak| L[Tampilkan pesan kegagalan pembuatan sesi]
-    L --> C
-    K -->|Ya| M[Ambil data profil pengguna dari koleksi users berdasarkan UID]
-    M --> N_EXISTS{Profil pengguna ditemukan?}
-    N_EXISTS -->|Tidak| N_ERR[Tampilkan error: Profil pengguna tidak ditemukan di database]
-    N_ERR --> P[Hapus sesi dan logout]
-    N_EXISTS -->|Ya| N{Status akun aktif?}
-    N -->|Tidak / Nonaktif| O[Tampilkan error: Akun dinonaktifkan. Hubungi admin]
-    O --> P
-    P --> C
-    N -->|Ya / Aktif| Q{Peran aktif pengguna / Role?}
-    Q -->|admin| R1[Arahkan ke Dashboard Admin Sistem & Menu Manajemen Pengguna]
-    Q -->|admin_gudang| R2[Arahkan ke Dashboard Admin Gudang, Inventaris, Scan Gudang, & Verifikasi]
-    Q -->|teknisi| R3[Arahkan ke Dashboard Teknisi, Scan QR Pengajuan, & Riwayat Sendiri]
-    Q -->|supervisor| R4[Arahkan ke Dashboard Supervisor, Pemantauan Inventaris, & Laporan]
-    Q -->|Peran tidak dikenali / Lainnya| R_UNKNOWN[Tampilkan error: Peran tidak dikenali atau tidak memiliki hak akses]
-    R_UNKNOWN --> P
-    R1 --> S([Selesai])
-    R2 --> S
-    R3 --> S
-    R4 --> S
-```
-
-> **Catatan Implementasi RBAC:** Pengarahan dashboard merupakan navigasi awal antarmuka. Penegakan hak akses (*authorization*) sesungguhnya ditegakkan secara berlapis melalui middleware server (`middleware.ts`), otorisasi handler API (`/api/*`), pemetaan peran domain (`lib/rbac.ts`), dan aturan keamanan basis data Firestore (*Firestore Security Rules*).
-
----
-
-#### 2. Flowchart pengajuan transaksi (Teknisi)
-
-Diagram ini menggambarkan alur kerja Teknisi dari pemindaian QR unit fisik, pemilihan aksi mutasi sesuai antarmuka scanner, pengisian formulir bukti dan nomor SPT (wajib untuk tindakan OUT/MOVE), pemrosesan transaksi atomik per item di Firestore untuk memeriksa `item_locks` aktif, hingga pencatatan transaksi berstatus `pending`.
-
-```mermaid
-flowchart TD
-    T_START([Mulai]) --> T_AUTH{Pengguna terautentikasi?}
-    T_AUTH -->|Tidak| T_LOGIN[Arahkan ke halaman login]
-    T_LOGIN --> T_START
-    T_AUTH -->|Ya| T_OPEN[Buka menu Scan QR /scan]
-    T_OPEN --> T_SCAN[Pindai QR Code pada unit fisik atau cari manual berdasarkan SN/Tag]
-    T_SCAN --> T_FOUND{Unit fisik ditemukan di database?}
-    T_FOUND -->|Tidak| T_NOT_FOUND[Tampilkan modal: QR tidak dikenal]
-    T_NOT_FOUND --> T_SCAN
-    T_FOUND -->|Ya| T_SHOW[Tampilkan detail nama perangkat, SN, tagging, status, dan lokasi saat ini]
-    T_SHOW --> T_ACT[Pilih aksi tindakan mutasi: Bawa / Rusak / Dismantle / Ditemukan]
-    T_ACT --> T_ADD_CART[Tambahkan item ke keranjang pengajuan transaksi antarmuka]
-    T_ADD_CART --> T_MORE{Tambah item lain ke keranjang?}
-    T_MORE -->|Ya| T_SCAN
-    T_MORE -->|Tidak| T_CART[Buka halaman keranjang pengajuan /transaksi/keranjang]
-    T_CART --> T_INPUT[Input lokasi tujuan, keterangan, bukti foto opsional, dan nomor SPT]
-    T_INPUT --> T_VAL_SPT{Tindakan memuat aksi OUT atau MOVE?}
-    T_VAL_SPT -->|Ya| T_CHK_SPT{Nomor SPT terisi?}
-    T_CHK_SPT -->|Tidak| T_ERR_SPT[Tampilkan error: Nomor SPT wajib diisi untuk OUT / MOVE]
-    T_ERR_SPT --> T_INPUT
-    T_CHK_SPT -->|Ya| T_VAL_REQ{Identitas pengaju terverifikasi lengkap?}
-    T_VAL_SPT -->|Tidak| T_VAL_REQ
-    T_VAL_REQ -->|Tidak| T_ERR_REQ[Tampilkan error: Pengaju transaksi harus terautentikasi]
-    T_ERR_REQ --> T_INPUT
-    T_VAL_REQ -->|Ya| T_SUBMIT[Klik tombol Ajukan Transaksi]
-    
-    T_SUBMIT --> T_LOOP_START[Mulai iterasi per item daftar pengajuan]
-    
-    subgraph TX_ATOMIC["Transaksi Atomik per Item (runTransaction)"]
-        T_TX_RUN[Mulai runTransaction Firestore]
-        T_TX_RUN --> T_CHK_LOCK{Item memiliki dokumen item_locks berstatus pending?}
-        T_CHK_LOCK -->|Ya| T_ABORT[Batalkan transaksi runTransaction: throw error pengajuan ganda]
-        T_CHK_LOCK -->|Tidak| T_READ_ITEM[Baca data unit dari sparepart_items / spareparts]
-        T_READ_ITEM --> T_SAVE_TX[Tulis dokumen transaksi baru berstatus pending]
-        T_SAVE_TX --> T_SET_LOCK[Tulis dokumen kunci reservasi di koleksi item_locks]
-        T_SET_LOCK --> T_COMMIT[Commit transaksi atomik unit berhasil]
-    end
-
-    T_LOOP_START --> TX_ATOMIC
-    T_ABORT --> T_RECORD_FAIL[Catat hasil item: Gagal - Sedang memiliki pengajuan aktif]
-    T_COMMIT --> T_RECORD_OK[Catat hasil item: Berhasil diajukan berstatus pending]
-    T_RECORD_FAIL --> T_NEXT_ITEM
-    T_RECORD_OK --> T_NEXT_ITEM{Masih ada item berikutnya dalam daftar pengajuan?}
-    T_NEXT_ITEM -->|Ya| T_LOOP_START
-    T_NEXT_ITEM -->|Tidak| T_POST_NOTIF[Kirim notifikasi ringkasan pengajuan ke Admin Gudang]
-    T_POST_NOTIF --> T_SUMMARY[Sajikan ringkasan hasil pengajuan per item kepada Teknisi]
-    T_SUMMARY --> T_END([Selesai])
-```
-
-> **Catatan Pengajuan & Status Barang:**
-> - Pengajuan beberapa item diproses secara terpisah per item/transaksi Firestore, sehingga dimungkinkan terjadi keberhasilan sebagian (*partial success*) apabila salah satu item sedang terkunci oleh pengajuan lain.
-> - Pada tahap pengajuan berstatus `pending`, lokasi fisik, kondisi unit, dan jumlah stok barang di gudang **belum mengalami perubahan** sampai transaksi disetujui oleh Admin Gudang.
-> - Notifikasi dibuat di luar eksekusi `runTransaction` agar tidak terpicu berulang kali apabila Firestore melakukan *transaction retry*.
-
----
-
-#### 3. Flowchart persetujuan dan penolakan transaksi (Admin Gudang)
-
-Diagram ini memodelkan proses verifikasi transaksi oleh Admin Gudang, verifikasi atomik bahwa transaksi masih berstatus `pending`, percabangan persetujuan (pembaruan atribut unit sesuai jenis transaksi, penyesuaian stok katalog, pembaruan transaksi menjadi `completed`) atau penolakan (pencatatan alasan dan status `rejected`), serta pelepasan dokumen kunci reservasi `item_locks` yang terkait.
-
-```mermaid
-flowchart TD
-    V_START([Mulai]) --> V_OPEN[Admin Gudang buka menu Approval Transaksi /spareparts/verifikasi]
-    V_OPEN --> V_LOAD[Muat daftar transaksi berstatus pending dari koleksi transaksi]
-    V_LOAD --> V_EMPTY{Ada transaksi pending?}
-    V_EMPTY -->|Tidak| V_NO_DATA[Tampilkan antrean kosong]
-    V_NO_DATA --> V_END([Selesai])
-    V_EMPTY -->|Ya| V_SELECT[Pilih salah satu transaksi pending untuk diverifikasi]
-    V_SELECT --> V_REVIEW[Tinjau data teknisi pengaju, nomor SPT, catatan bukti, dan lokasi tujuan]
-    V_REVIEW --> V_DECIDE{Keputusan verifikasi Admin Gudang?}
-    
-    %% Cabang Penolakan
-    V_DECIDE -->|Tolak| V_REJ_INPUT[Input alasan penolakan transaksi]
-    V_REJ_INPUT --> V_REJ_VAL{Alasan penolakan diisi?}
-    V_REJ_VAL -->|Tidak| V_REJ_ERR[Tampilkan error: Alasan penolakan wajib diisi]
-    V_REJ_ERR --> V_REJ_INPUT
-    V_REJ_VAL -->|Ya| V_REJ_TX_START[Panggil executeAtomicRejection via runTransaction]
-    
-    subgraph REJ_ATOMIC["Transaksi Atomik Penolakan (executeAtomicRejection)"]
-        V_REJ_READ[Baca dokumen transaksi berdasarkan ID]
-        V_REJ_READ --> V_REJ_CHK{Status transaksi masih pending?}
-        V_REJ_CHK -->|Tidak| V_REJ_ABORT[Batalkan: Transaksi sudah diproses sebelumnya]
-        V_REJ_CHK -->|Ya| V_REJ_WRITE[Update statusTransaksi: rejected, catat verifikator dan rejectReason]
-        V_REJ_WRITE --> V_REJ_DEL_LOCK[Hapus dokumen kunci item_locks milik item terkait]
-        V_REJ_DEL_LOCK --> V_REJ_COMMIT[Commit penolakan transaksi berhasil]
-    end
-
-    V_REJ_TX_START --> REJ_ATOMIC
-    V_REJ_ABORT --> V_ERR_REJ[Tampilkan pesan kegagalan: Transaksi sudah berubah status]
-    V_ERR_REJ --> V_END
-    V_REJ_COMMIT --> V_POST_REJ[Operasi Pasca-Commit Penolakan]
-    V_POST_REJ --> V_AUDIT_REJ[Catat audit log penolakan ke koleksi aktivitas via helper audit]
-    V_POST_REJ --> V_NOTIF_REJ[Kirim notifikasi penolakan ke akun Teknisi pengaju]
-    V_NOTIF_REJ --> V_DONE_REJ[Tampilkan konfirmasi: Pengajuan berhasil ditolak]
-    V_DONE_REJ --> V_END
-
-    %% Cabang Persetujuan
-    V_DECIDE -->|Setujui| V_APP_TX_START[Panggil executeAtomicApproval via runTransaction]
-    
-    subgraph APP_ATOMIC["Transaksi Atomik Persetujuan (executeAtomicApproval)"]
-        V_APP_READ[Baca dokumen transaksi dan unit sparepart_items terkait]
-        V_APP_READ --> V_APP_CHK{Status transaksi masih pending?}
-        V_APP_CHK -->|Tidak| V_APP_ABORT[Batalkan: Transaksi sudah diproses sebelumnya]
-        V_APP_CHK -->|Ya| V_APP_MUT_ITEM[Perbarui atribut unit pada sparepart_items sesuai jenis transaksi]
-        V_APP_MUT_ITEM --> V_ADJUST_STOCK{Perlu penyesuaian stok katalog spareparts?}
-        V_ADJUST_STOCK -->|Ya| V_MUTATE_STOCK[Update stokGudang dan stokTotal katalog sesuai aturan mutasi]
-        V_ADJUST_STOCK -->|Tidak| V_APP_WRITE_TX
-        V_MUTATE_STOCK --> V_APP_WRITE_TX[Update statusTransaksi: completed dan catat data verifikator]
-        V_APP_WRITE_TX --> V_APP_DEL_LOCK[Hapus dokumen kunci item_locks milik item terkait]
-        V_APP_DEL_LOCK --> V_APP_COMMIT[Commit persetujuan transaksi berhasil]
-    end
-
-    V_APP_TX_START --> APP_ATOMIC
-    V_APP_ABORT --> V_ERR_APP[Tampilkan pesan kegagalan: Transaksi sudah berubah status]
-    V_ERR_APP --> V_END
-    V_APP_COMMIT --> V_POST_APP[Operasi Pasca-Commit Persetujuan]
-    V_POST_APP --> V_AUDIT_APP[Catat audit log persetujuan ke koleksi aktivitas via helper audit]
-    V_POST_APP --> V_NOTIF_APP[Kirim notifikasi persetujuan ke akun Teknisi pengaju]
-    V_NOTIF_APP --> V_DONE_APP[Tampilkan konfirmasi: Transaksi berhasil disetujui]
-    V_DONE_APP --> V_END
-```
-
-> **Catatan Penolakan, Pelepasan Reservasi, & Batas Operasi:**
-> - Baik persetujuan maupun penolakan diimplementasikan menggunakan `runTransaction` Firestore (`executeAtomicApproval` dan `executeAtomicRejection`) untuk menjamin status `pending` belum berubah saat dieksekusi.
-> - Pada penolakan, data fisik unit pada `sparepart_items` dan stok katalog `spareparts` **tetap tidak berubah** (*untouched*).
-> - Penghapusan kunci reservasi di `item_locks` mengacu langsung pada dokumen `itemId` yang sedang diproses.
-> - Pencatatan audit log ke koleksi `aktivitas` dan pengiriman pesan ke `notifications` dieksekusi di luar transaksi atomik (*post-commit helper* secara *best-effort*).
-
----
-
-#### 4. Flowchart transaksi langsung (Admin Gudang)
-
-Diagram ini menggambarkan pemrosesan transaksi langsung melalui menu Scan Gudang tanpa melalui tahap pengajuan berstatus `pending`. Pemrosesan meliputi validasi masukan, pembaruan data sesuai mode yang dipilih, pencatatan hasil transaksi, penanganan opsi dokumen formal, dan penyajian ringkasan keberhasilan atau kegagalan setiap item.
-
-```mermaid
-flowchart TD
-    G_START([Mulai]) --> G_AUTH{Admin Gudang terautentikasi?}
-    G_AUTH -->|Tidak| G_LOGIN[Arahkan ke login]
-    G_LOGIN --> G_START
-    G_AUTH -->|Ya| G_OPEN[Buka menu Scan Gudang /scan/gudang]
-    G_OPEN --> G_MODE[Pilih salah satu mode: UPDATE / MOVE / DAMAGE / DISMANTLE / FOUND]
-    G_MODE --> G_SCAN[Pindai satu atau beberapa QR unit fisik ke dalam daftar batch]
-    G_SCAN --> G_VALID_ITEMS{Daftar batch memiliki item?}
-    G_VALID_ITEMS -->|Tidak| G_SCAN_WAIT[Tunggu pemindaian barang]
-    G_SCAN_WAIT --> G_SCAN
-    G_VALID_ITEMS -->|Ya| G_INPUT[Lengkapi formulir metadata batch sesuai mode yang aktif]
-    
-    G_INPUT --> G_CHECK_MODE{Mode yang dipilih?}
-    G_CHECK_MODE -->|UPDATE| G_VAL_UPD[Isi draft status baru, lokasi baru, atau keterangan lalu klik Terapkan]
-    G_CHECK_MODE -->|MOVE| G_VAL_MOVE[Pilih penerima/teknisi, isi nomor SPT, dan lokasi tujuan]
-    G_CHECK_MODE -->|DAMAGE / DISMANTLE / FOUND| G_VAL_OTH[Isi lokasi barang dan catatan kondisi fisik]
-
-    G_VAL_UPD --> G_DOC_OPT{Pengguna memilih pembuatan dokumen?}
-    G_VAL_MOVE --> G_DOC_OPT
-    G_VAL_OTH --> G_DOC_OPT
-    
-    G_DOC_OPT -->|Ya| G_FILL_DOC[Centang opsi Surat Jalan / Berita Acara & lengkapi metadata lokasi/site]
-    G_DOC_OPT -->|Tidak| G_CONFIRM[Tinjau seluruh baris item pada tabel batch]
-    G_FILL_DOC --> G_CONFIRM
-    
-    G_CONFIRM --> G_SUBMIT[Klik tombol Proses & Simpan]
-    G_SUBMIT --> G_EXEC[Panggil helper submitAdminScanBatch]
-    
-    G_EXEC --> G_LOOP_EXEC[Iterasi pemrosesan setiap item secara terpisah]
-    G_LOOP_EXEC --> G_TRY_PATCH[Perbarui atribut unit pada koleksi sparepart_items]
-    G_TRY_PATCH --> G_CHK_PATCH{Pembaruan unit berhasil?}
-    G_CHK_PATCH -->|Gagal| G_LOG_FAIL[Catat kegagalan item pada batch result]
-    G_CHK_PATCH -->|Berhasil| G_CREATE_TX[Catat dokumen transaksi baru berstatus completed]
-    G_CREATE_TX --> G_AUDIT_TX[Catat audit log ke koleksi aktivitas]
-    G_AUDIT_TX --> G_LOG_OK[Catat keberhasilan item pada batch result]
-    
-    G_LOG_FAIL --> G_MORE_BATCH
-    G_LOG_OK --> G_MORE_BATCH{Masih ada item berikutnya dalam batch?}
-    G_MORE_BATCH -->|Ya| G_LOOP_EXEC
-    G_MORE_BATCH -->|Tidak| G_GEN_PDF{Pengguna memilih pembuatan dokumen?}
-    G_GEN_PDF -->|Ya| G_DOWNLOAD_PDF[Generate dan unduh file PDF Surat Jalan / Berita Acara]
-    G_GEN_PDF -->|Tidak| G_SHOW_RES[Tampilkan modal ringkasan: jumlah item berhasil dan gagal diproses]
-    G_DOWNLOAD_PDF --> G_SHOW_RES
-    G_SHOW_RES --> G_END([Selesai])
-```
-
-> **Catatan Pemrosesan Transaksi Langsung & Dokumen:**
-> - Pemrosesan transaksi langsung pada `submitAdminScanBatch` dilakukan per grup/item secara terpisah (*iterative operations*), bukan satu transaksi commit atomik global. Kegagalan pada satu unit tidak otomatis membatalkan pembaruan unit lain yang telah berhasil diproses.
-> - Mode `UPDATE` pada scanner gudang juga mencatat dokumen pada koleksi `transaksi` berstatus `completed` (dengan jenis tindakan `MOVE` dan catatan keterangan pembaruan status/lokasi).
-> - Dokumen PDF Surat Jalan atau Berita Acara bersifat opsional dan digenerate dari daftar item yang diproses pada batch tersebut. Dokumen fisik serah terima hanya dilakukan apabila alur operasional di lapangan mensyaratkannya.
 
 ### State diagram transaksi
 
@@ -1328,7 +791,7 @@ stateDiagram-v2
 
 Dokumen pending diperbarui menjadi completed/rejected. Helper verifikasi menolak pemrosesan ulang dokumen final. Pengajuan setelah penolakan merupakan transaksi baru, bukan mengubah rejected kembali ke pending.
 
-## 15. Struktur proyek, halaman, dan API
+## 14. Struktur proyek, halaman, dan API
 
 ```text
 Telkomsatt/
@@ -1389,7 +852,7 @@ Telkomsatt/
 
 GET `/api/admin/users` tidak menyediakan daftar publik dan ditolak handler. Modul inventaris membaca Firestore melalui helper. Batas upload API adalah 5 MB per gambar, selain validasi format/isi dan batas hosting.
 
-## 16. Instalasi dan konfigurasi
+## 15. Instalasi dan konfigurasi
 
 ### A. Source lokal
 
@@ -1557,7 +1020,7 @@ Jika environment berubah, restart server pengembangan; untuk mode produksi, ulan
 
 Belum ada perintah `npm test` terpadu. Jalankan script regresi dengan `node` seperti pada bagian pengujian. `npm run test:push-item` tercantum di `package.json`, tetapi file `scripts/test-push-item.js` tidak tersedia sehingga perintah itu belum dapat digunakan.
 
-## 17. Panduan pengguna
+## 16. Panduan pengguna
 
 ### Admin Sistem
 
@@ -1607,12 +1070,14 @@ PDF dibuat setelah proses penyimpanan. Jika muncul kegagalan unduh, periksa tran
 1. Login, buka **Scan QR** (`/scan`), dan izinkan kamera. Pencarian SN/tagging dapat membantu saat label sulit dipindai.
 2. Pilih aksi yang tersedia. Scanner saat ini menampilkan **Bawa** (`MOVE`), **Rusak** (`DAMAGE`), serta **Dismantle** dan **Ditemukan** untuk alur legacy.
 3. Periksa nama, SN/tagging, status, dan lokasi hasil scan, lalu susun keranjang.
-4. Buka **Pengajuan Saya** (`/transaksi/keranjang`). Isi lokasi tujuan, keterangan/bukti yang diminta, dan **Nomor SPT** jika keranjang memuat item pengajuan OUT/MOVE.
+4. Buka **Pengajuan Saya** (`/transaksi/keranjang`). Isi lokasi tujuan dan keterangan/bukti yang diminta. Untuk OUT/MOVE, perhatikan kendala input SPT di bawah.
 5. Periksa seluruh item, lalu kirim jika formulir dapat memenuhi validasi. **Menunggu Approval** / `pending` berarti pengajuan tercatat dan menunggu keputusan Admin Gudang.
-6. Pantau notifikasi dan **Riwayat** (`/teknisi/riwayat`). Query riwayat teknisi telah dibatasi otomatis menggunakan `requestedByUid` (UID akun teknisi yang login) sehingga pemuatan riwayat aman dan sesuai dengan Firebase Security Rules.
+6. Pantau notifikasi dan **Riwayat** (`/teknisi/riwayat`). Jika ada penolakan, baca alasannya sebelum membuat pengajuan baru.
 7. Bila barang belum terdaftar, minta Admin Gudang mencatatnya. Fitur Quick Add lama pada scanner tidak menggantikan izin pembuatan barang yang dibatasi rules.
 
-**Catatan formulir & riwayat:** Input Nomor SPT telah tersedia langsung pada keranjang pengajuan saat memuat transaksi jenis OUT/MOVE. Riwayat transaksi teknisi dan ringkasan dashboard teknisi juga telah disesuaikan dengan scoping `requestedByUid`, memastikan query Firestore berhasil tanpa kendala izin keamanan (*permission denied*).
+**Kendala formulir saat ini:** keranjang mewajibkan nomor SPT untuk OUT/MOVE, tetapi belum menampilkan input untuk mengisinya. Akibatnya pengajuan **Bawa/MOVE** melalui halaman tersebut tertahan validasi. Pengisian input SPT memerlukan perbaikan aplikasi; untuk penyerahan operasional yang diproses langsung oleh gudang, koordinasikan penggunaan **Serah / Bawa** oleh Admin Gudang. Jalur langsung ini mencatat transaksi selesai dan tidak melalui pending/approval teknisi.
+
+**Kendala riwayat:** query riwayat teknisi belum membatasi `requestedByUid` pada query Firestore, sementara rules membatasi pembacaan transaksi milik pengguna. Dengan rules repository, pemuatan riwayat dapat ditolak meskipun login berhasil. Jika terjadi, minta Admin Gudang memeriksa hasil transaksi; daftar kosong karena gagal dimuat tidak membuktikan pengajuan belum tersimpan.
 
 Keranjang/draft yang disimpan di browser membantu melanjutkan pekerjaan di perangkat yang sama. Draft lokal belum merupakan bukti pengajuan di database dan tidak menjamin perpindahan draft antarperangkat. Periksa kembali daftar saat membuka aplikasi setelah jaringan terputus atau setelah berganti akun.
 
@@ -1700,7 +1165,7 @@ Data lama yang menyimpan `qrCodeUrl` localhost tidak perlu diubah untuk menampil
 
 Generator PDF menggunakan `public/logo/logo.png` beresolusi 1994 × 829 piksel dan mempertahankan proporsi logo di dalam area cetak. Ikon 32 × 32 piksel tidak digunakan untuk PDF. Unduh ulang Berita Acara untuk memperoleh tampilan logo yang diperbaiki.
 
-## 18. Deployment GitHub dan Netlify
+## 17. Deployment GitHub dan Netlify
 
 ```mermaid
 flowchart LR
@@ -1735,7 +1200,7 @@ Build lokal tidak membuktikan konfigurasi Netlify lengkap. `.env.local` tidak ik
 
 Sesudah deploy, cocokkan commit pada Netlify dengan commit yang diinginkan, lalu uji satu siklus menggunakan akun dan data uji: login → baca inventaris → scan/pilih unit → pengajuan → verifikasi → periksa hasil. Uji juga upload dan unduhan dari browser/Android yang digunakan petugas.
 
-## 19. Build Android
+## 18. Build Android
 
 | Pengaturan | Nilai |
 |---|---|
@@ -1764,7 +1229,7 @@ Perubahan web pada URL sama dapat tampil setelah reload. Perubahan native, izin,
 
 Alamat server diatur pada properti `TELKOMSAT_WEB_URL` di [android/gradle.properties](android/gradle.properties). Gunakan origin HTTPS, misalnya `https://tsatspare.netlify.app`, tanpa path, query, atau fragmen. URL bawaan yang terisi menyembunyikan tombol pengaturan server; nilai kosong memungkinkan pengguna mengisi server melalui aplikasi. Setelah mengganti konfigurasi build ini, buat dan instal APK baru.
 
-## 20. Pengujian dan pemeliharaan
+## 19. Pengujian dan pemeliharaan
 
 ```bash
 npm run lint
@@ -1824,7 +1289,7 @@ Pemeliharaan mencakup log Netlify, konsistensi stok/item, akun aktif, rules/inde
 
 Simpan periode, identitas item/transaksi, langkah pemicu, dan pesan error saat melaporkan masalah. Untuk kendala hosting sertakan commit/deploy terkait; hindari menyertakan password, cookie sesi, atau private key.
 
-## 21. Troubleshooting
+## 20. Troubleshooting
 
 | Gejala | Pemeriksaan |
 |---|---|
@@ -1856,7 +1321,7 @@ Simpan periode, identitas item/transaksi, langkah pemicu, dan pesan error saat m
 | Angka dashboard berbeda dari laporan | Samakan periode, filter, tab, sumber data, dan hitungan dokumen dibanding jumlah unit |
 | `npm run test:push-item` gagal menemukan modul | File script yang dirujuk belum tersedia; gunakan pemeriksaan yang terdaftar pada bagian pengujian |
 
-## 22. Batasan dan referensi source
+## 21. Batasan dan referensi source
 
 - Komentar/helper legacy yang menyebut guest tidak mengaktifkan akses tamu pada rules saat ini.
 - Akses UI dan izin Firestore tidak identik. Beberapa rules koleksi lebih luas daripada menu; matriks UI bukan jaminan pembatasan per field.

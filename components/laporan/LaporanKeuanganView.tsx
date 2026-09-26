@@ -2,10 +2,11 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, FileText, PackageCheck, RotateCcw, TrendingUp } from "lucide-react";
+import { AlertTriangle, FileText, PackageCheck, RotateCcw, TrendingUp, Search, X } from "lucide-react";
 import { LaporanFilters, useLaporanTransaksi } from "@/lib/hooks/useLaporanTransaksi";
 import { formatDate } from "@/lib/utils";
 import { getTransactionSparepartLines } from "@/lib/utils/transactionDisplay";
+import { matchesReportSearch } from "@/lib/utils/reportSearch";
 
 export default function LaporanKeuanganView() {
   const [filters, setFilters] = useState<LaporanFilters>({
@@ -14,14 +15,23 @@ export default function LaporanKeuanganView() {
       .split("T")[0],
     endDate: new Date().toISOString().split("T")[0],
   });
+  const [searchQuery, setSearchQuery] = useState("");
   const { transactions, sparepartNames, loading } = useLaporanTransaksi(filters);
 
+  const filteredTransactions = useMemo(
+    () =>
+      transactions.filter((transaction) =>
+        matchesReportSearch(transaction, searchQuery, sparepartNames[transaction.idSparepart])
+      ),
+    [transactions, searchQuery, sparepartNames]
+  );
+
   const stats = useMemo(() => {
-    const pengadaan = transactions.filter((tx) => tx.jenisTransaksi === "FOUND" || tx.jenisTransaksi === "RETURN").length;
-    const rusak = transactions.filter((tx) => tx.jenisTransaksi === "DAMAGE" || tx.statusBarang === "Rusak").length;
-    const operasional = transactions.filter((tx) => tx.jenisTransaksi === "MOVE" || tx.jenisTransaksi === "DISMANTLE").length;
-    return { total: transactions.length, pengadaan, rusak, operasional };
-  }, [transactions]);
+    const pengadaan = filteredTransactions.filter((tx) => tx.jenisTransaksi === "FOUND" || tx.jenisTransaksi === "RETURN").length;
+    const rusak = filteredTransactions.filter((tx) => tx.jenisTransaksi === "DAMAGE" || tx.statusBarang === "Rusak").length;
+    const operasional = filteredTransactions.filter((tx) => tx.jenisTransaksi === "MOVE" || tx.jenisTransaksi === "DISMANTLE").length;
+    return { total: filteredTransactions.length, pengadaan, rusak, operasional };
+  }, [filteredTransactions]);
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -58,13 +68,33 @@ export default function LaporanKeuanganView() {
           <RotateCcw className="h-5 w-5 text-telkomsat-red" />
           <h2 className="text-lg font-bold">Filter Periode</h2>
         </div>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
           <input
             type="date"
             value={filters.startDate}
             onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
             className="rounded-xl border px-4 py-3 outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20"
           />
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-telkomsat-gray" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari lokasi, aset, SN..."
+              className="w-full rounded-xl border px-10 py-3 outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery("")}
+                aria-label="Hapus pencarian"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-telkomsat-gray hover:text-telkomsat-red"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </div>
           <input
             type="date"
             value={filters.endDate}
@@ -81,8 +111,8 @@ export default function LaporanKeuanganView() {
         <div className="p-5">
           {loading ? (
             <p className="py-10 text-center text-telkomsat-gray">Memuat...</p>
-          ) : transactions.length === 0 ? (
-            <p className="py-10 text-center text-telkomsat-gray">Tidak ada data pada periode ini</p>
+          ) : filteredTransactions.length === 0 ? (
+            <p className="py-10 text-center text-telkomsat-gray">Tidak ada data yang sesuai dengan filter</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-sm">
@@ -96,7 +126,7 @@ export default function LaporanKeuanganView() {
                   </tr>
                 </thead>
                 <tbody>
-                  {transactions.map((tx) => {
+                  {filteredTransactions.map((tx) => {
                     const sparepart = getTransactionSparepartLines(tx);
                     return (
                       <tr key={tx.id} className="border-b border-telkomsat-gray-lighter">

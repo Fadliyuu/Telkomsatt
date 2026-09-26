@@ -20,7 +20,6 @@ export class ValidationError extends Error {
 
 const USER_STATUSES: UserStatus[] = ["aktif", "nonaktif"];
 const TRANSACTION_TYPES: JenisTransaksi[] = [
-  "IN",
   "MOVE",
   "DAMAGE",
   "RETURN",

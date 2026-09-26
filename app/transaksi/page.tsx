@@ -84,15 +84,7 @@ export default function DaftarTransaksiPage() {
         return false;
       }
       // Filter jenis transaksi
-      if (filterJenis === "MASUK") {
-        if (!["IN", "RETURN", "FOUND", "DISMANTLE"].includes(tx.jenisTransaksi)) {
-          return false;
-        }
-      } else if (filterJenis === "KELUAR") {
-        if (!["OUT", "MOVE"].includes(tx.jenisTransaksi)) {
-          return false;
-        }
-      } else if (filterJenis !== "all" && tx.jenisTransaksi !== filterJenis) {
+      if (filterJenis !== "all" && tx.jenisTransaksi !== filterJenis) {
         return false;
       }
       // Search query
@@ -142,66 +134,19 @@ export default function DaftarTransaksiPage() {
   };
 
   const getJenisBadge = (jenis: string) => {
+    const label = getJenisTransaksiLabel(jenis);
     switch (jenis) {
-      case "IN":
-        return (
-          <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded-lg border border-emerald-500/30">
-            Barang Masuk Baru
-          </span>
-        );
-      case "RETURN":
-        return (
-          <span className="px-2.5 py-1 bg-teal-500/20 text-teal-300 text-xs font-bold rounded-lg border border-teal-500/30">
-            Pengembalian (Masuk)
-          </span>
-        );
       case "MOVE":
-        return (
-          <span className="px-2.5 py-1 bg-blue-500/20 text-blue-300 text-xs font-bold rounded-lg border border-blue-500/30">
-            Pindah Lokasi
-          </span>
-        );
+        return <span className="px-2.5 py-1 bg-blue-500/20 text-blue-300 text-xs font-bold rounded-lg border border-blue-500/30">{label}</span>;
       case "OUT":
-        return (
-          <span className="px-2.5 py-1 bg-purple-500/20 text-purple-300 text-xs font-bold rounded-lg border border-purple-500/30">
-            Barang Keluar
-          </span>
-        );
+        return <span className="px-2.5 py-1 bg-purple-500/20 text-purple-300 text-xs font-bold rounded-lg border border-purple-500/30">{label}</span>;
       case "DAMAGE":
-        return (
-          <span className="px-2.5 py-1 bg-red-500/20 text-red-300 text-xs font-bold rounded-lg border border-red-500/30">
-            Barang Rusak
-          </span>
-        );
-      case "FOUND":
-        return (
-          <span className="px-2.5 py-1 bg-cyan-500/20 text-cyan-300 text-xs font-bold rounded-lg border border-cyan-500/30">
-            Masuk (Temuan)
-          </span>
-        );
-      case "DISMANTLE":
-        return (
-          <span className="px-2.5 py-1 bg-amber-500/20 text-amber-300 text-xs font-bold rounded-lg border border-amber-500/30">
-            Masuk (Dismantle)
-          </span>
-        );
-      default: {
-        const label = getJenisTransaksiLabel(jenis);
-        return (
-          <span className="px-2.5 py-1 bg-gray-500/20 text-gray-300 text-xs font-bold rounded-lg border border-gray-500/30">
-            {label}
-          </span>
-        );
-      }
+        return <span className="px-2.5 py-1 bg-red-500/20 text-red-300 text-xs font-bold rounded-lg border border-red-500/30">{label}</span>;
+      case "RETURN":
+        return <span className="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-bold rounded-lg border border-emerald-500/30">{label}</span>;
+      default:
+        return <span className="px-2.5 py-1 bg-gray-500/20 text-gray-300 text-xs font-bold rounded-lg border border-gray-500/30">{label}</span>;
     }
-  };
-
-  const formatLocationLabel = (loc?: string) => {
-    if (!loc) return "Base (Gudang Regional 6)";
-    if (loc.toLowerCase().includes("regional 6") || loc.toLowerCase() === "gudang") {
-      return "Base (Gudang Regional 6)";
-    }
-    return loc;
   };
 
   return (
@@ -215,21 +160,11 @@ export default function DaftarTransaksiPage() {
             <p className="text-sm text-gray-400">
               {user?.role === "teknisi"
                 ? "Riwayat dan status pengajuan transaksi milik Anda"
-                : "Seluruh pengajuan transaksi pergerakan dan mutasi barang gudang / base"}
+                : "Seluruh pengajuan transaksi pergerakan dan mutasi barang gudang"}
             </p>
           </div>
 
           <div className="flex items-center space-x-3 flex-wrap gap-y-2">
-            {(user?.role === "admin_gudang" || user?.role === "admin") && (
-              <Link
-                href="/spareparts/tambah"
-                className="flex items-center space-x-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white px-4 py-2.5 rounded-xl font-bold text-sm shadow-lg shadow-emerald-600/30 hover:scale-105 transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Catat Barang Masuk</span>
-              </Link>
-            )}
-
             {user?.role === "teknisi" && (
               <Link
                 href="/transaksi/keranjang"
@@ -275,7 +210,7 @@ export default function DaftarTransaksiPage() {
               />
             </div>
             
-            <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:w-[480px] xl:shrink-0">
+            <div className="grid min-w-0 grid-cols-1 gap-2 sm:grid-cols-2 xl:w-[440px] xl:shrink-0">
               <div className="flex min-w-0 items-center gap-2">
                 <Filter className="w-4 h-4 text-gray-400 flex-shrink-0" />
                 <select
@@ -298,13 +233,10 @@ export default function DaftarTransaksiPage() {
                 className="w-full px-3 py-3 border border-white/15 rounded-xl focus:ring-2 focus:ring-telkomsat-red outline-none text-sm bg-[#161922] text-white"
               >
                 <option value="all">Semua Jenis Transaksi</option>
-                <option value="MASUK">Semua Barang Masuk (Baru / Kembali / Base)</option>
-                <option value="IN">Barang Masuk Baru (IN)</option>
-                <option value="RETURN">Pengembalian Barang (RETURN)</option>
-                <option value="KELUAR">Semua Barang Keluar / Pindah</option>
-                <option value="OUT">Barang Keluar (OUT)</option>
-                <option value="MOVE">Pindah Lokasi (MOVE)</option>
-                <option value="DAMAGE">Barang Rusak (DAMAGE)</option>
+                <option value="MOVE">Pindah Lokasi</option>
+                <option value="OUT">Barang Keluar</option>
+                <option value="DAMAGE">Barang Rusak</option>
+                <option value="RETURN">Pengembalian Barang</option>
               </select>
             </div>
           </div>
@@ -387,7 +319,7 @@ export default function DaftarTransaksiPage() {
                         <div className="flex items-center space-x-1">
                           <MapPin className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                           <span>
-                            {formatLocationLabel(tx.lokasiAsal)} ➔ <strong className="text-white">{formatLocationLabel(tx.lokasiTujuan)}</strong>
+                            {tx.lokasiAsal || "Gudang"} ➔ <strong className="text-white">{tx.lokasiTujuan || "Gudang"}</strong>
                           </span>
                         </div>
                       </td>

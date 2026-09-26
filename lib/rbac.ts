@@ -32,7 +32,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, AppPermission[]> = {
   ],
   teknisi: ["dashboard", "scan_qr"],
   supervisor: ["dashboard", "laporan", "aktivitas"],
-  // Legacy roles (disabled)
+  // Role kesiapan upgrade: monitoring dan pelaporan, tanpa perubahan data stok.
   direktur: ["dashboard", "laporan", "aktivitas"],
   manager: ["dashboard", "laporan", "aktivitas"],
   admin_keuangan: ["dashboard", "laporan", "aktivitas"],
@@ -82,9 +82,9 @@ const ROLE_ALLOWED_PATHS: Record<UserRole, string[]> = {
     "/item",
     "/transaksi",
   ],
-  // Legacy roles fallback
+  // Role kesiapan upgrade
   direktur: ["/dashboard", "/laporan", "/aktivitas", "/profile", "/notifikasi"],
-  manager: ["/dashboard", "/laporan", "/aktivitas", "/profile", "/notifikasi"],
+  manager: ["/dashboard", "/laporan", "/aktivitas", "/profile", "/notifikasi", "/transaksi", "/spareparts", "/item"],
   admin_keuangan: ["/dashboard", "/laporan", "/aktivitas", "/profile", "/notifikasi"],
 };
 
@@ -102,6 +102,7 @@ export const DEFAULT_ROLE_PATH: Record<UserRole, string> = {
 const SPAREPARTS_GUDANG_ONLY = [
   "/spareparts/tambah",
   "/spareparts/export-import",
+  "/spareparts/import-foto",
   "/spareparts/verifikasi",
 ];
 

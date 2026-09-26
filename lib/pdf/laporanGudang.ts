@@ -1,6 +1,6 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import { tryAddLogo, formatIdDate } from "./pdfShared";
+import { tryAddLogo } from "./pdfShared";
 import type { Transaksi } from "@/types";
 import {
   ArahBarang,
@@ -29,8 +29,6 @@ const EMERALD: [number, number, number] = [5, 150, 105];
 
 const MARGIN = { top: 8, right: 12, bottom: 14, left: 12 };
 const FOOTER_H = 12;
-
-export type LaporanGudangScope = ArahBarang | JenisTransaksi | "semua";
 
 export interface LaporanGudangPdfMeta {
   exportedByName: string;
@@ -144,7 +142,6 @@ function statusBadgeStyle(
 }
 
 const JENIS_PDF_LABEL: Record<JenisTransaksi, string> = {
-  IN: "Masuk Baru",
   OUT: "Keluar",
   MOVE: "Pindah",
   DAMAGE: "Rusak",
@@ -152,31 +149,6 @@ const JENIS_PDF_LABEL: Record<JenisTransaksi, string> = {
   FOUND: "Ditemukan",
   DISMANTLE: "Dismantle",
 };
-
-function getReportTitle(scope: LaporanGudangScope): string {
-  const titles: Record<LaporanGudangScope, string> = {
-    semua: "LAPORAN TRANSAKSI SPAREPART",
-    keluar: "LAPORAN SPAREPART KELUAR",
-    masuk: "LAPORAN SPAREPART MASUK",
-    lainnya: "LAPORAN SPAREPART LAINNYA",
-    IN: "LAPORAN SPAREPART MASUK BARU",
-    OUT: "LAPORAN SPAREPART KELUAR",
-    MOVE: "LAPORAN PINDAH SPAREPART",
-    DAMAGE: "LAPORAN SPAREPART RUSAK",
-    RETURN: "LAPORAN PENGEMBALIAN SPAREPART",
-    FOUND: "LAPORAN SPAREPART DITEMUKAN",
-    DISMANTLE: "LAPORAN DISMANTLE SPAREPART",
-  };
-  return titles[scope];
-}
-
-function getReportScopeLabel(scope: LaporanGudangScope): string {
-  if (scope === "semua") return "Semua transaksi";
-  if (scope === "keluar" || scope === "masuk" || scope === "lainnya") {
-    return `Arah: ${getArahLabel(scope)}`;
-  }
-  return `Jenis: ${JENIS_PDF_LABEL[scope]}`;
-}
 
 function formatDatePdf(d: Date): string {
   return new Intl.DateTimeFormat("id-ID", {
@@ -285,11 +257,11 @@ function addFooter(
 export async function downloadLaporanGudangPdf(params: {
   transactions: Transaksi[];
   sparepartNames: Record<string, string>;
-  filters: LaporanFilters;
-  reportScope: LaporanGudangScope;
+  filters: LaporanFilters & { searchQuery?: string };
+  activeTab: ArahBarang | "semua";
   meta: LaporanGudangPdfMeta;
 }): Promise<void> {
-  const { transactions, sparepartNames, filters, reportScope, meta } = params;
+  const { transactions, sparepartNames, filters, activeTab, meta } = params;
   const stats = getGudangStats(transactions);
 
   const doc = new jsPDF({
@@ -300,7 +272,7 @@ export async function downloadLaporanGudangPdf(params: {
   });
 
   doc.setProperties({
-    title: getReportTitle(reportScope),
+    title: "Laporan Barang Masuk Keluar",
     subject: "Inventaris Sparepart Telkomsat Regional 6",
     creator: "Telkomsat Inventaris QR",
   });
@@ -328,15 +300,16 @@ export async function downloadLaporanGudangPdf(params: {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(30, 41, 59);
-  doc.text(getReportTitle(reportScope), textX, y + 7);
+  doc.text("LAPORAN BARANG MASUK & KELUAR", textX, y + 7);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6.5);
   doc.setTextColor(...SLATE);
   const filterLine = [
     `Periode ${formatIdDateShort(filters.startDate)} – ${formatIdDateShort(filters.endDate)}`,
-    getReportScopeLabel(reportScope),
+    activeTab === "semua" ? "Semua arah" : getArahLabel(activeTab),
     filters.namaTeknisi?.trim() ? `Teknisi: ${filters.namaTeknisi.trim()}` : null,
+    filters.searchQuery?.trim() ? `Pencarian: ${filters.searchQuery.trim()}` : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -533,67 +506,11 @@ export async function downloadLaporanGudangPdf(params: {
     },
   });
 
-  const finalY =
-    (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable
-      ?.finalY ?? 150;
-
-  const availableY = pageH - MARGIN.bottom - FOOTER_H;
-  let signY = finalY + 8;
-  if (signY + 36 > availableY) {
-    doc.addPage();
-    drawPageFrame(doc, pageW, pageH);
-    drawTopBar(doc, pageW);
-    signY = MARGIN.top + 16;
-  }
-
-  const colW = 68;
-  const leftColX = MARGIN.left + 5;
-  const rightColX = pageW - MARGIN.right - colW - 5;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(51, 65, 85);
-
-  // Kolom Kiri: Diajukan oleh
-  doc.text("Diajukan oleh:", leftColX, signY);
-  doc.setFontSize(7.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text(`${meta.exportedByRole || "Petugas Gudang / Base"}`, leftColX, signY + 4);
-
-  // Kolom Kanan: Diajukan untuk
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(51, 65, 85);
-  doc.text("Diajukan untuk:", rightColX, signY);
-  doc.setFontSize(7.5);
-  doc.setTextColor(100, 116, 139);
-  doc.text("Penerima / Atasan Terkait", rightColX, signY + 4);
-
-  // Garis tanda tangan
-  const lineY = signY + 22;
-  doc.setDrawColor(148, 163, 184);
-  doc.setLineWidth(0.35);
-  doc.line(leftColX, lineY, leftColX + colW, lineY);
-  doc.line(rightColX, lineY, rightColX + colW, lineY);
-
-  // Nama & Tanggal
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8);
-  doc.setTextColor(30, 41, 59);
-  doc.text(`( ${meta.exportedByName} )`, leftColX, lineY + 4);
-  doc.text("( .................................................... )", rightColX, lineY + 4);
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(7);
-  doc.setTextColor(100, 116, 139);
-  doc.text(`Tanggal: ${formatIdDate(new Date())}`, leftColX, lineY + 8);
-  doc.text("Jabatan / Unit: .............................", rightColX, lineY + 8);
-
   addFooter(doc, meta, pageW, pageH);
 
-  const tabSlug = reportScope.toLowerCase();
+  const tabSlug = activeTab === "semua" ? "semua" : activeTab;
   doc.save(
-    `laporan-sparepart_${tabSlug}_${filters.startDate}_${filters.endDate}.pdf`
+    `laporan-masuk-keluar_${filters.startDate}_${filters.endDate}_${tabSlug}.pdf`
   );
 }
 

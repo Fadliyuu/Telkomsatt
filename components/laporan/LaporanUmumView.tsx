@@ -1,13 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ErrorState from "@/components/ErrorState";
 import { getReportDateRange, toLocalDateInput } from "@/lib/utils/reportDates";
 import { getTransactions } from "@/lib/firebase/transactions";
-import { Transaksi, JenisTransaksi, USER_ROLE_LABELS } from "@/types";
-import { useAuthStore } from "@/lib/store/useAuthStore";
+import { Transaksi, JenisTransaksi } from "@/types";
 import { formatDate } from "@/lib/utils";
-import { FileText, Filter, TrendingUp, AlertTriangle, RotateCcw, Activity } from "lucide-react";
+import { FileText, Filter, TrendingUp, AlertTriangle, RotateCcw, Activity, Search, X } from "lucide-react";
 import toast from "react-hot-toast";
 import { downloadLaporanTransaksiPdf } from "@/lib/pdf/laporanTransaksi";
 import { getSparepartById } from "@/lib/firebase/spareparts";
@@ -19,6 +18,7 @@ import {
   getTransactionSparepartLines,
 } from "@/lib/utils/transactionDisplay";
 import Link from "next/link";
+import { matchesReportSearch } from "@/lib/utils/reportSearch";
 
 /** Ikon unduh lokal — hindari impor `FileDown` dari lucide (sering gagal dibaca jika node_modules di OneDrive). */
 function IconDownload({ className }: { className?: string }) {
@@ -49,7 +49,6 @@ interface ReportFilters {
 }
 
 export default function LaporanUmumView() {
-  const user = useAuthStore((state) => state.user);
   const [transactions, setTransactions] = useState<Transaksi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -60,6 +59,7 @@ export default function LaporanUmumView() {
     endDate: toLocalDateInput(new Date()),
   });
   const [sparepartNames, setSparepartNames] = useState<Record<string, string>>({});
+  const [searchQuery, setSearchQuery] = useState("");
   /** Semua transaksi dalam rentang tanggal (tanpa filter jenis/teknisi) — untuk opsi dropdown teknisi */
   const [transactionsInPeriod, setTransactionsInPeriod] = useState<Transaksi[]>([]);
 
@@ -159,12 +159,20 @@ export default function LaporanUmumView() {
     return [...new Set(names)].sort((a, b) => a.localeCompare(b, "id"));
   };
 
-  const getStats = () => {
-    const move = transactions.filter((t) => t.jenisTransaksi === "MOVE").length;
-    const damage = transactions.filter((t) => t.jenisTransaksi === "DAMAGE").length;
-    const return_ = transactions.filter((t) => t.jenisTransaksi === "RETURN").length;
+  const filteredTransactions = useMemo(
+    () =>
+      transactions.filter((transaction) =>
+        matchesReportSearch(transaction, searchQuery, sparepartNames[transaction.idSparepart])
+      ),
+    [transactions, searchQuery, sparepartNames]
+  );
 
-    return { move, damage, return: return_, total: transactions.length };
+  const getStats = () => {
+    const move = filteredTransactions.filter((t) => t.jenisTransaksi === "MOVE").length;
+    const damage = filteredTransactions.filter((t) => t.jenisTransaksi === "DAMAGE").length;
+    const return_ = filteredTransactions.filter((t) => t.jenisTransaksi === "RETURN").length;
+
+    return { move, damage, return: return_, total: filteredTransactions.length };
   };
 
   const stats = getStats();
@@ -174,23 +182,16 @@ export default function LaporanUmumView() {
       toast.error("Tunggu hingga data selesai dimuat");
       return;
     }
-    if (transactions.length === 0) {
+    if (filteredTransactions.length === 0) {
       toast.error("Tidak ada data untuk diekspor. Ubah filter atau periode.");
       return;
     }
     await toast.promise(
       downloadLaporanTransaksiPdf({
-        transactions,
+        transactions: filteredTransactions,
         sparepartNames,
-        filters,
+        filters: { ...filters, searchQuery },
         stats,
-        meta: user
-          ? {
-              exportedByName: user.nama,
-              exportedByRole: USER_ROLE_LABELS[user.role] || user.role,
-              exportedByEmail: user.email,
-            }
-          : undefined,
       }),
       {
         loading: "Menyiapkan PDF…",
@@ -281,7 +282,7 @@ export default function LaporanUmumView() {
             </div>
             <h2 className="text-lg font-bold text-telkomsat-black">Filter</h2>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-semibold text-telkomsat-black mb-2">
                 Tanggal Mulai
@@ -292,6 +293,31 @@ export default function LaporanUmumView() {
                 onChange={(e) => setFilters({ ...filters, startDate: e.target.value })}
                 className="w-full px-4 py-3 border border-telkomsat-gray-lighter rounded-xl focus:ring-2 focus:ring-telkomsat-red focus:border-telkomsat-red outline-none transition-all duration-300 bg-telkomsat-gray-lighter/30 focus:bg-white"
               />
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-telkomsat-black mb-2">
+                Cari laporan
+              </label>
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-telkomsat-gray" />
+                <input
+                  type="search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Lokasi, Medan, Kisaran..."
+                  className="w-full px-10 py-3 border border-telkomsat-gray-lighter rounded-xl focus:ring-2 focus:ring-telkomsat-red focus:border-telkomsat-red outline-none transition-all duration-300 bg-telkomsat-gray-lighter/30 focus:bg-white"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery("")}
+                    aria-label="Hapus pencarian"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-telkomsat-gray hover:text-telkomsat-red"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
             <div>
               <label className="block text-sm font-semibold text-telkomsat-black mb-2">
@@ -321,7 +347,6 @@ export default function LaporanUmumView() {
                 className="w-full px-4 py-3 border border-telkomsat-gray-lighter rounded-xl focus:ring-2 focus:ring-telkomsat-red focus:border-telkomsat-red outline-none transition-all duration-300 bg-telkomsat-gray-lighter/30 focus:bg-white"
               >
                 <option value="">Semua</option>
-                <option value="IN">Barang Masuk Baru</option>
                 <option value="OUT">Barang Keluar</option>
                 <option value="MOVE">Pindah</option>
                 <option value="RETURN">Kembali</option>
@@ -366,7 +391,7 @@ export default function LaporanUmumView() {
               <button
                 type="button"
                 onClick={handleExportPdf}
-                disabled={loading || !!error || loadedFilters !== filters || transactions.length === 0}
+                disabled={loading || !!error || loadedFilters !== filters || filteredTransactions.length === 0}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-telkomsat-red to-telkomsat-red-dark shadow-md hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 disabled:opacity-45 disabled:pointer-events-none disabled:transform-none"
               >
                 <IconDownload className="w-4 h-4 shrink-0" />
@@ -385,14 +410,14 @@ export default function LaporanUmumView() {
               </div>
             ) : error ? (
               <ErrorState message={error} onRetry={loadTransactions} />
-            ) : transactions.length === 0 ? (
+            ) : filteredTransactions.length === 0 ? (
               <div className="text-center py-12 animate-fade-in">
                 <FileText className="w-16 h-16 text-telkomsat-gray mx-auto mb-4 opacity-50" />
                 <p className="text-telkomsat-black font-semibold text-lg">
                   Tidak ada transaksi ditemukan
                 </p>
                 <p className="text-telkomsat-gray mt-2">
-                  Coba ubah filter untuk melihat data lainnya
+                  Coba ubah filter atau kata pencarian untuk melihat data lainnya
                 </p>
               </div>
             ) : (
@@ -411,7 +436,7 @@ export default function LaporanUmumView() {
                     </tr>
                   </thead>
                   <tbody>
-                    {transactions.map((transaction, index) => {
+                    {filteredTransactions.map((transaction, index) => {
                       const sparepart = getTransactionSparepartLines(transaction);
                       return (
                       <tr 

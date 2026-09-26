@@ -52,14 +52,16 @@ const nextConfig = {
             key: "Content-Security-Policy",
             value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com",
+              // Tesseract v7 loads its worker/core from jsDelivr; eval also permits WASM.
+              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://apis.google.com https://www.gstatic.com https://cdn.jsdelivr.net",
               // Styles: self + inline (Tailwind)
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               // Fonts
               "font-src 'self' https://fonts.gstatic.com",
               // Images: self + Cloudinary + data URIs (for QR codes)
               "img-src 'self' data: blob: https://res.cloudinary.com https://lh3.googleusercontent.com",
-              "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://api.cloudinary.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com",
+              // Tesseract downloads WASM and Indonesian/English language data from jsDelivr.
+              "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com https://api.cloudinary.com https://firestore.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://cdn.jsdelivr.net",
               // Workers (needed for some QR libraries)
               "worker-src 'self' blob:",
               // Camera access for QR scanner

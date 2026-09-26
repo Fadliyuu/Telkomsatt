@@ -28,7 +28,6 @@ import { SparepartItem, Transaksi } from "@/types";
 import { formatDate } from "@/lib/utils";
 
 const JENIS_LABEL: Record<string, string> = {
-  IN: "Barang Masuk Baru",
   MOVE: "Pindah Lokasi",
   OUT: "Barang Keluar",
   DAMAGE: "Barang Rusak",
@@ -88,7 +87,7 @@ export default function AdminGudangDashboardView() {
     ).length;
     const barangKeluar = transactions.filter((tx) => tx.jenisTransaksi === "MOVE" || tx.jenisTransaksi === "OUT").length;
     const barangMasuk = transactions.filter((tx) =>
-      ["IN", "FOUND", "RETURN", "DISMANTLE"].includes(tx.jenisTransaksi)
+      ["FOUND", "RETURN", "DISMANTLE"].includes(tx.jenisTransaksi)
     ).length;
 
     return {

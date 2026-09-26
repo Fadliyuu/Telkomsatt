@@ -10,12 +10,28 @@ export type UserRole =
 export type UserStatus = "aktif" | "nonaktif";
 export type ProfileIconSize = "sm" | "md" | "lg";
 
+/** Role yang boleh dipilih pada form pembuatan/edit akun saat ini. */
 export const USER_ROLES: UserRole[] = [
   "admin",
   "admin_gudang",
   "teknisi",
   "supervisor",
 ];
+
+/**
+ * Role yang sudah didukung oleh sistem, namun sengaja belum ditampilkan pada
+ * dropdown akun.; untuk menampilkannya di form, tambahkan role ini ke USER_ROLES.
+ */
+export const RESERVED_UPGRADE_ROLES = ["manager", "direktur"] as const;
+export type ReservedUpgradeRole = (typeof RESERVED_UPGRADE_ROLES)[number];
+
+export function isReservedUpgradeRole(role: UserRole): role is ReservedUpgradeRole {
+  return (RESERVED_UPGRADE_ROLES as readonly UserRole[]).includes(role);
+}
+
+export function isRoleSelectableInAccountForm(role: UserRole): boolean {
+  return USER_ROLES.includes(role);
+}
 
 export interface User {
   id: string;
@@ -140,7 +156,7 @@ export interface Lokasi {
 }
 
 // Transaction Types
-export type ActiveTransactionType = "IN" | "OUT" | "MOVE" | "RETURN" | "DAMAGE";
+export type ActiveTransactionType = "OUT" | "MOVE" | "RETURN" | "DAMAGE";
 export type LegacyTransactionType = "FOUND" | "DISMANTLE";
 export type JenisTransaksi = ActiveTransactionType | LegacyTransactionType;
 export type StatusTransaksi = "pending" | "completed" | "rejected";
@@ -148,7 +164,6 @@ export type StatusBarang = "Normal" | "Rusak" | "Hilang" | "Perlu Pengecekan";
 export type KondisiDismantle = "Rusak" | "Bagus" | "Tidak Diketahui";
 
 export const JENIS_TRANSAKSI_LABELS: Record<JenisTransaksi, string> = {
-  IN: "Barang Masuk Baru",
   MOVE: "Pindah Lokasi",
   OUT: "Barang Keluar",
   DAMAGE: "Barang Rusak",
@@ -227,7 +242,7 @@ export interface SessionKeranjangItem {
   id: string;
   idSessionKeranjang: string;
   idSparepart: string;
-  jenisAksi: "IN" | "OUT" | "MOVE" | "RETURN" | "DAMAGE" | "FOUND" | "DISMANTLE";
+  jenisAksi: "OUT" | "MOVE" | "RETURN" | "DAMAGE" | "FOUND" | "DISMANTLE";
   lokasiDitemukan?: string; // Lokasi saat barang ditemukan (untuk FOUND)
   kondisiDismantle?: KondisiDismantle; // Kondisi untuk DISMANTLE: Rusak atau Bagus
   kondisiBarang?: KondisiDismantle; // Kondisi untuk FOUND: Rusak, Bagus, atau Tidak Diketahui

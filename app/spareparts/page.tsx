@@ -41,6 +41,7 @@ import {
   Filter,
   Loader2,
   Eye,
+  Camera,
   Trash2,
   Calendar,
 } from "lucide-react";
@@ -487,8 +488,17 @@ export default function SparepartsPage() {
               className="group flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-2.5 rounded-xl hover:shadow-xl transition-all duration-300 transform hover:scale-105 font-semibold"
             >
               <FileSpreadsheet className="w-5 h-5" />
-              <span>Import Data</span>
+              <span className="hidden sm:inline">Excel</span>
             </Link>
+            {user?.role === "admin_gudang" && (
+              <Link
+                href="/spareparts/import-foto"
+                className="group flex items-center space-x-2 bg-gradient-to-r from-violet-600 to-purple-700 text-white px-5 py-2.5 rounded-xl hover:shadow-xl transition-all duration-300 transform hover:scale-105 font-semibold"
+              >
+                <Camera className="w-5 h-5" />
+                <span className="hidden sm:inline">Import Foto</span>
+              </Link>
+            )}
             <Link
               href="/spareparts/tambah"
               className="group flex items-center space-x-2 bg-gradient-to-r from-telkomsat-red to-telkomsat-red-dark text-white px-5 py-2.5 rounded-xl hover:shadow-xl transition-all duration-300 transform hover:scale-105 font-semibold shadow-lg shadow-red-600/30"
@@ -940,16 +950,16 @@ export default function SparepartsPage() {
                   </div>
                 ) : (
                   <table className="w-full">
-                    <thead className="bg-white/10 sticky top-0 border-b border-white/10">
+                    <thead className="bg-telkomsat-gray-lighter/50 sticky top-0">
                       <tr>
                         <th className="px-4 py-3 w-12" />
-                        <th className="px-4 py-3 text-left text-xs font-bold uppercase text-gray-300">
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase">
                           Nama
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold uppercase text-gray-300">
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase">
                           SN
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold uppercase text-gray-300">
+                        <th className="px-4 py-3 text-left text-xs font-bold uppercase">
                           Status
                         </th>
                       </tr>
