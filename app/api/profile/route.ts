@@ -10,6 +10,7 @@ import {
 import { rateLimit, getClientIp } from "@/lib/server/rateLimiter";
 
 const ALLOWED_PROFILE_SIZES = new Set(["sm", "md", "lg"]);
+const USERNAME_PATTERN = /^[a-z0-9][a-z0-9._-]{1,31}$/;
 
 function cleanString(value: unknown): string | undefined {
   return typeof value === "string" ? value.trim() : undefined;
@@ -34,6 +35,24 @@ export async function PATCH(request: NextRequest) {
     const decoded = await adminAuth().verifyIdToken(token, true);
     const payload = await request.json();
     const updateData: Record<string, unknown> = {};
+
+    const username = cleanString(payload.username)?.toLowerCase();
+    if (username !== undefined) {
+      if (!USERNAME_PATTERN.test(username)) {
+        return badRequestResponse(
+          "Username terdiri dari 2-32 huruf kecil, angka, titik, garis bawah, atau strip"
+        );
+      }
+      const existingUser = await adminDb()
+        .collection("users")
+        .where("username", "==", username)
+        .limit(2)
+        .get();
+      if (existingUser.docs.some((user) => user.id !== decoded.uid)) {
+        return badRequestResponse("Username sudah digunakan");
+      }
+      updateData.username = username;
+    }
 
     const nama = cleanString(payload.nama);
     if (nama !== undefined) {

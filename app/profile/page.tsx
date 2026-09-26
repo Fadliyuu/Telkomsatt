@@ -28,6 +28,7 @@ export default function ProfilePage() {
   });
   const [profile, setProfile] = useState({
     nama: "",
+    username: "",
     nomorHP: "",
     alamat: "",
   });
@@ -54,6 +55,7 @@ export default function ProfilePage() {
     if (!user) return;
     setProfile({
       nama: user.nama || "",
+      username: user.username || "",
       nomorHP: user.nomorHP || "",
       alamat: user.alamat || "",
     });
@@ -98,6 +100,7 @@ export default function ProfilePage() {
     try {
       const payload = {
         nama: profile.nama.trim(),
+        username: profile.username.trim().toLowerCase(),
         nomorHP: profile.nomorHP.trim(),
         alamat: profile.alamat.trim(),
       };
@@ -419,6 +422,18 @@ export default function ProfilePage() {
                   onChange={(e) => setProfile({ ...profile, nama: e.target.value })}
                   className="w-full rounded-xl border border-white/15 bg-white/5 text-white px-4 py-3 outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20"
                 />
+              </div>
+              <div>
+                <label className="mb-1.5 block font-bold text-gray-300 uppercase">Username</label>
+                <input
+                  value={profile.username}
+                  onChange={(e) => setProfile({ ...profile, username: e.target.value.toLowerCase() })}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  className="w-full rounded-xl border border-white/15 bg-white/5 text-white px-4 py-3 outline-none focus:border-telkomsat-red focus:ring-2 focus:ring-telkomsat-red/20"
+                />
+                <p className="mt-1.5 text-[11px] text-gray-400">Dipakai untuk login. Gunakan 2-32 huruf kecil, angka, titik, garis bawah, atau strip.</p>
               </div>
               <div>
                 <label className="mb-1.5 block font-bold text-gray-300 uppercase">Nomor HP / WhatsApp</label>

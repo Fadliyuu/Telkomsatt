@@ -16,13 +16,14 @@ export const USER_ROLES: UserRole[] = [
   "admin_gudang",
   "teknisi",
   "supervisor",
+  "manager",
 ];
 
 /**
  * Role yang sudah didukung oleh sistem, namun sengaja belum ditampilkan pada
  * dropdown akun.; untuk menampilkannya di form, tambahkan role ini ke USER_ROLES.
  */
-export const RESERVED_UPGRADE_ROLES = ["manager", "direktur"] as const;
+export const RESERVED_UPGRADE_ROLES = ["direktur"] as const;
 export type ReservedUpgradeRole = (typeof RESERVED_UPGRADE_ROLES)[number];
 
 export function isReservedUpgradeRole(

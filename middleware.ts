@@ -22,7 +22,11 @@ import { AUTH_SESSION_COOKIE } from "@/lib/constants/storageKeys";
  */
 
 /** Paths that are always publicly accessible (no login required). */
-const PUBLIC_PREFIXES = ["/login", "/api/auth/session"];
+const PUBLIC_PREFIXES = [
+  "/login",
+  "/api/auth/session",
+  "/api/auth/resolve-username",
+];
 const PUBLIC_PATHS = ["/", "/firebase-messaging-sw.js", "/manifest.webmanifest"];
 
 /** Protect against open-redirect attacks on the `next` parameter. */
