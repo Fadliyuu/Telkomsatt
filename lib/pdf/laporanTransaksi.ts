@@ -31,6 +31,12 @@ export interface LaporanPdfStats {
   total: number;
 }
 
+export interface LaporanTransaksiPdfMeta {
+  exportedByName?: string;
+  exportedByRole?: string;
+  exportedByEmail?: string;
+}
+
 function jenisLabel(j: string): string {
   const m: Record<string, string> = {
     MOVE: "Pindah",
@@ -40,6 +46,18 @@ function jenisLabel(j: string): string {
     DISMANTLE: "Dismantle",
   };
   return m[j] || j;
+}
+
+function reportTitle(jenis?: JenisTransaksi): string {
+  const titles: Partial<Record<JenisTransaksi, string>> = {
+    OUT: "LAPORAN SPAREPART KELUAR",
+    MOVE: "LAPORAN PINDAH SPAREPART",
+    RETURN: "LAPORAN PENGEMBALIAN SPAREPART",
+    DAMAGE: "LAPORAN SPAREPART RUSAK",
+    FOUND: "LAPORAN SPAREPART DITEMUKAN",
+    DISMANTLE: "LAPORAN DISMANTLE SPAREPART",
+  };
+  return jenis ? titles[jenis] || "LAPORAN TRANSAKSI SPAREPART" : "LAPORAN TRANSAKSI SPAREPART";
 }
 
 function filterDeskripsi(f: LaporanPdfFilters): string {
@@ -191,8 +209,9 @@ export async function downloadLaporanTransaksiPdf(params: {
   sparepartNames: Record<string, string>;
   filters: LaporanPdfFilters;
   stats: LaporanPdfStats;
+  meta?: LaporanTransaksiPdfMeta;
 }): Promise<void> {
-  const { transactions, sparepartNames, filters, stats } = params;
+  const { transactions, sparepartNames, filters, stats, meta } = params;
 
   const doc = new jsPDF({
     orientation: "landscape",
@@ -245,7 +264,7 @@ export async function downloadLaporanTransaksiPdf(params: {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(17);
   doc.setTextColor(30, 41, 59);
-  doc.text("LAPORAN TRANSAKSI SPAREPART", titleX, headerTop + 11);
+  doc.text(reportTitle(filters.jenisTransaksi), titleX, headerTop + 11);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9.2);
@@ -383,9 +402,51 @@ export async function downloadLaporanTransaksiPdf(params: {
     },
   });
 
+  const finalY =
+    (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? tableStartY + 40;
+  const signatureHeight = 32;
+  let signatureY = finalY + 8;
+  if (signatureY + signatureHeight > pageH - 20) {
+    doc.addPage();
+    drawPageFrame(doc, pageW, pageH);
+    doc.setFillColor(...RED);
+    doc.rect(0, 0, pageW, 3.5, "F");
+    signatureY = margin + 14;
+  }
+
+  const signatureWidth = 75;
+  const leftSignatureX = margin + 8;
+  const rightSignatureX = pageW - margin - signatureWidth - 8;
+  const exporterName = meta?.exportedByName || "Administrator";
+  const exporterRole = meta?.exportedByRole || "Admin Sistem / Gudang";
+  const signatureLineY = signatureY + 20;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.setTextColor(51, 65, 85);
+  doc.text("Diajukan oleh:", leftSignatureX, signatureY);
+  doc.text("Diajukan untuk:", rightSignatureX, signatureY);
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(exporterRole, leftSignatureX, signatureY + 4);
+  doc.text("Penerima / Atasan Terkait", rightSignatureX, signatureY + 4);
+  doc.setDrawColor(148, 163, 184);
+  doc.setLineWidth(0.35);
+  doc.line(leftSignatureX, signatureLineY, leftSignatureX + signatureWidth, signatureLineY);
+  doc.line(rightSignatureX, signatureLineY, rightSignatureX + signatureWidth, signatureLineY);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.5);
+  doc.setTextColor(30, 41, 59);
+  doc.text(`( ${exporterName} )`, leftSignatureX, signatureLineY + 4);
+  doc.text("( .................................................... )", rightSignatureX, signatureLineY + 4);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Tanggal: ${new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date())}`, leftSignatureX, signatureLineY + 8.5);
+  doc.text("Jabatan / Unit: .............................", rightSignatureX, signatureLineY + 8.5);
+
   addFooter(doc);
 
   const fname = `laporan-transaksi_${filters.startDate}_${filters.endDate}.pdf`;
   doc.save(fname);
 }
-

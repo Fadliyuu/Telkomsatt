@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ErrorState from "@/components/ErrorState";
 import { getReportDateRange, toLocalDateInput } from "@/lib/utils/reportDates";
 import { getTransactions } from "@/lib/firebase/transactions";
-import { Transaksi, JenisTransaksi } from "@/types";
+import { Transaksi, JenisTransaksi, USER_ROLE_LABELS } from "@/types";
 import { formatDate } from "@/lib/utils";
 import { FileText, Filter, TrendingUp, AlertTriangle, RotateCcw, Activity, Search, X } from "lucide-react";
 import toast from "react-hot-toast";
@@ -19,6 +19,7 @@ import {
 } from "@/lib/utils/transactionDisplay";
 import Link from "next/link";
 import { matchesReportSearch } from "@/lib/utils/reportSearch";
+import { useAuthStore } from "@/lib/store/useAuthStore";
 
 /** Ikon unduh lokal — hindari impor `FileDown` dari lucide (sering gagal dibaca jika node_modules di OneDrive). */
 function IconDownload({ className }: { className?: string }) {
@@ -49,6 +50,7 @@ interface ReportFilters {
 }
 
 export default function LaporanUmumView() {
+  const { user } = useAuthStore();
   const [transactions, setTransactions] = useState<Transaksi[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -192,6 +194,13 @@ export default function LaporanUmumView() {
         sparepartNames,
         filters: { ...filters, searchQuery },
         stats,
+        meta: user
+          ? {
+              exportedByName: user.nama,
+              exportedByRole: USER_ROLE_LABELS[user.role],
+              exportedByEmail: user.email,
+            }
+          : undefined,
       }),
       {
         loading: "Menyiapkan PDF…",

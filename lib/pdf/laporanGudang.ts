@@ -30,6 +30,8 @@ const EMERALD: [number, number, number] = [5, 150, 105];
 const MARGIN = { top: 8, right: 12, bottom: 14, left: 12 };
 const FOOTER_H = 12;
 
+export type LaporanGudangScope = ArahBarang | JenisTransaksi | "semua";
+
 export interface LaporanGudangPdfMeta {
   exportedByName: string;
   exportedByEmail?: string;
@@ -160,6 +162,28 @@ function formatDatePdf(d: Date): string {
   }).format(d);
 }
 
+function getReportTitle(scope: LaporanGudangScope): string {
+  const titles: Record<LaporanGudangScope, string> = {
+    semua: "LAPORAN TRANSAKSI SPAREPART",
+    keluar: "LAPORAN SPAREPART KELUAR",
+    masuk: "LAPORAN SPAREPART MASUK",
+    lainnya: "LAPORAN SPAREPART LAINNYA",
+    OUT: "LAPORAN SPAREPART KELUAR",
+    MOVE: "LAPORAN PINDAH SPAREPART",
+    RETURN: "LAPORAN PENGEMBALIAN SPAREPART",
+    FOUND: "LAPORAN SPAREPART DITEMUKAN",
+    DISMANTLE: "LAPORAN DISMANTLE SPAREPART",
+    DAMAGE: "LAPORAN SPAREPART RUSAK",
+  };
+  return titles[scope];
+}
+
+function getReportScopeLabel(scope: LaporanGudangScope): string {
+  if (scope === "semua") return "Semua transaksi";
+  if (scope === "keluar" || scope === "masuk" || scope === "lainnya") return `Arah: ${getArahLabel(scope)}`;
+  return `Jenis: ${JENIS_PDF_LABEL[scope] || scope}`;
+}
+
 function lokasiCell(value?: string): string {
   return value?.trim() || "—";
 }
@@ -258,10 +282,10 @@ export async function downloadLaporanGudangPdf(params: {
   transactions: Transaksi[];
   sparepartNames: Record<string, string>;
   filters: LaporanFilters & { searchQuery?: string };
-  activeTab: ArahBarang | "semua";
+  reportScope: LaporanGudangScope;
   meta: LaporanGudangPdfMeta;
 }): Promise<void> {
-  const { transactions, sparepartNames, filters, activeTab, meta } = params;
+  const { transactions, sparepartNames, filters, reportScope, meta } = params;
   const stats = getGudangStats(transactions);
 
   const doc = new jsPDF({
@@ -300,14 +324,14 @@ export async function downloadLaporanGudangPdf(params: {
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(30, 41, 59);
-  doc.text("LAPORAN BARANG MASUK & KELUAR", textX, y + 7);
+  doc.text(getReportTitle(reportScope), textX, y + 7);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(6.5);
   doc.setTextColor(...SLATE);
   const filterLine = [
     `Periode ${formatIdDateShort(filters.startDate)} – ${formatIdDateShort(filters.endDate)}`,
-    activeTab === "semua" ? "Semua arah" : getArahLabel(activeTab),
+    getReportScopeLabel(reportScope),
     filters.namaTeknisi?.trim() ? `Teknisi: ${filters.namaTeknisi.trim()}` : null,
     filters.searchQuery?.trim() ? `Pencarian: ${filters.searchQuery.trim()}` : null,
   ]
@@ -506,11 +530,48 @@ export async function downloadLaporanGudangPdf(params: {
     },
   });
 
+  const finalY =
+    (doc as jsPDF & { lastAutoTable?: { finalY: number } }).lastAutoTable?.finalY ?? tableStartY + 40;
+  let signatureY = finalY + 8;
+  if (signatureY + 36 > pageH - MARGIN.bottom - FOOTER_H) {
+    doc.addPage();
+    drawPageFrame(doc, pageW, pageH);
+    drawTopBar(doc, pageW);
+    signatureY = MARGIN.top + 16;
+  }
+  const signatureWidth = 68;
+  const leftSignatureX = MARGIN.left + 5;
+  const rightSignatureX = pageW - MARGIN.right - signatureWidth - 5;
+  const signatureLineY = signatureY + 22;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(51, 65, 85);
+  doc.text("Diajukan oleh:", leftSignatureX, signatureY);
+  doc.text("Diajukan untuk:", rightSignatureX, signatureY);
+  doc.setFontSize(7.5);
+  doc.setTextColor(100, 116, 139);
+  doc.text(meta.exportedByRole || "Petugas Gudang / Base", leftSignatureX, signatureY + 4);
+  doc.text("Penerima / Atasan Terkait", rightSignatureX, signatureY + 4);
+  doc.setDrawColor(148, 163, 184);
+  doc.setLineWidth(0.35);
+  doc.line(leftSignatureX, signatureLineY, leftSignatureX + signatureWidth, signatureLineY);
+  doc.line(rightSignatureX, signatureLineY, rightSignatureX + signatureWidth, signatureLineY);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8);
+  doc.setTextColor(30, 41, 59);
+  doc.text(`( ${meta.exportedByName} )`, leftSignatureX, signatureLineY + 4);
+  doc.text("( .................................................... )", rightSignatureX, signatureLineY + 4);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139);
+  doc.text(`Tanggal: ${formatIdDateTime(new Date())}`, leftSignatureX, signatureLineY + 8);
+  doc.text("Jabatan / Unit: .............................", rightSignatureX, signatureLineY + 8);
+
   addFooter(doc, meta, pageW, pageH);
 
-  const tabSlug = activeTab === "semua" ? "semua" : activeTab;
+  const tabSlug = reportScope.toLowerCase();
   doc.save(
     `laporan-masuk-keluar_${filters.startDate}_${filters.endDate}_${tabSlug}.pdf`
   );
 }
-
