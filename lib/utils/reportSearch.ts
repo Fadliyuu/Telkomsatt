@@ -2,7 +2,6 @@ import type { Transaksi } from "@/types";
 import {
   getApprovedBy,
   getCarriedBy,
-  getTransactionLocation,
   getTransactionSparepartLines,
 } from "@/lib/utils/transactionDisplay";
 
@@ -15,7 +14,7 @@ function normalize(value: string | undefined): string {
 }
 
 /**
- * Mencari pada informasi yang relevan di laporan, terutama lokasi asal/tujuan.
+ * Mencari pada informasi yang relevan di laporan, terutama lokasi tujuan.
  * Pencarian bersifat tidak peka huruf besar-kecil dan mendukung potongan kata.
  */
 export function matchesReportSearch(
@@ -32,9 +31,7 @@ export function matchesReportSearch(
     sparepart.name,
     sparepart.serialNumber,
     sparepart.tagging,
-    transaction.lokasiAsal,
     transaction.lokasiTujuan,
-    getTransactionLocation(transaction),
     getCarriedBy(transaction),
     getApprovedBy(transaction),
     transaction.jenisTransaksi,

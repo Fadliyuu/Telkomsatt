@@ -41,16 +41,17 @@ import {
 } from "@/lib/utils/transactionDisplay";
 import Link from "next/link";
 import { matchesReportSearch } from "@/lib/utils/reportSearch";
+import PdfRecipientModal from "@/components/laporan/PdfRecipientModal";
+import type { PdfRecipient } from "@/components/laporan/PdfRecipientModal";
 
 type TabArah = "semua" | ArahBarang;
-type ReportScope = LaporanGudangScope;
+type ReportScope = Exclude<LaporanGudangScope, "lainnya">;
+type DisplayArahScope = Exclude<TabArah, "lainnya">;
 
 const REPORT_SCOPE_OPTIONS: { id: ReportScope; label: string }[] = [
   { id: "semua", label: "Semua Transaksi" },
   { id: "keluar", label: "Barang Keluar" },
   { id: "masuk", label: "Barang Masuk" },
-  { id: "lainnya", label: "Rusak / Lainnya" },
-  { id: "OUT", label: "Barang Keluar (OUT)" },
   { id: "MOVE", label: "Pindah Lokasi" },
   { id: "RETURN", label: "Pengembalian" },
   { id: "FOUND", label: "Barang Ditemukan" },
@@ -58,8 +59,8 @@ const REPORT_SCOPE_OPTIONS: { id: ReportScope; label: string }[] = [
   { id: "DAMAGE", label: "Barang Rusak" },
 ];
 
-function isArahScope(scope: ReportScope): scope is TabArah {
-  return scope === "semua" || scope === "keluar" || scope === "masuk" || scope === "lainnya";
+function isArahScope(scope: ReportScope): scope is DisplayArahScope {
+  return scope === "semua" || scope === "keluar" || scope === "masuk";
 }
 
 function filterByReportScope(transactions: Parameters<typeof filterByArah>[0], scope: ReportScope) {
@@ -103,6 +104,7 @@ export default function LaporanGudangView() {
   });
   const [reportScope, setReportScope] = useState<ReportScope>("semua");
   const [searchQuery, setSearchQuery] = useState("");
+  const [recipientModalOpen, setRecipientModalOpen] = useState(false);
 
   const {
     transactions,
@@ -125,7 +127,7 @@ export default function LaporanGudangView() {
     [filteredTransactions]
   );
 
-  const handleExportPdf = async () => {
+  const handleExportPdf = () => {
     if (loading) {
       toast.error("Tunggu hingga data selesai dimuat");
       return;
@@ -139,6 +141,11 @@ export default function LaporanGudangView() {
       return;
     }
 
+    setRecipientModalOpen(true);
+  };
+
+  const handleConfirmExport = async (recipient: PdfRecipient) => {
+    setRecipientModalOpen(false);
     try {
       await downloadLaporanGudangPdf({
         transactions: filteredTransactions,
@@ -149,6 +156,8 @@ export default function LaporanGudangView() {
           exportedByName: user.nama,
           exportedByEmail: user.email,
           exportedByRole: USER_ROLE_LABELS[user.role],
+          recipientName: recipient.name,
+          recipientPosition: recipient.position,
         },
       });
 
@@ -458,6 +467,7 @@ export default function LaporanGudangView() {
           )}
         </div>
       </div>
+      <PdfRecipientModal open={recipientModalOpen} onClose={() => setRecipientModalOpen(false)} onConfirm={handleConfirmExport} />
     </div>
   );
 }

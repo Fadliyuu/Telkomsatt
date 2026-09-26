@@ -36,6 +36,8 @@ export interface LaporanGudangPdfMeta {
   exportedByName: string;
   exportedByEmail?: string;
   exportedByRole?: string;
+  recipientName?: string;
+  recipientPosition?: string;
 }
 
 function formatIdDateTime(d: Date): string {
@@ -543,6 +545,8 @@ export async function downloadLaporanGudangPdf(params: {
   const leftSignatureX = MARGIN.left + 5;
   const rightSignatureX = pageW - MARGIN.right - signatureWidth - 5;
   const signatureLineY = signatureY + 22;
+  const recipientName = meta.recipientName || "....................................................";
+  const recipientPosition = meta.recipientPosition || "";
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
@@ -552,21 +556,19 @@ export async function downloadLaporanGudangPdf(params: {
   doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
   doc.text(meta.exportedByRole || "Petugas Gudang / Base", leftSignatureX, signatureY + 4);
-  doc.text("Penerima / Atasan Terkait", rightSignatureX, signatureY + 4);
+  doc.text(recipientPosition, rightSignatureX, signatureY + 4);
   doc.setDrawColor(148, 163, 184);
   doc.setLineWidth(0.35);
   doc.line(leftSignatureX, signatureLineY, leftSignatureX + signatureWidth, signatureLineY);
-  doc.line(rightSignatureX, signatureLineY, rightSignatureX + signatureWidth, signatureLineY);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8);
   doc.setTextColor(30, 41, 59);
   doc.text(`( ${meta.exportedByName} )`, leftSignatureX, signatureLineY + 4);
-  doc.text("( .................................................... )", rightSignatureX, signatureLineY + 4);
+  doc.text(`( ${recipientName} )`, rightSignatureX, signatureLineY + 4);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(100, 116, 139);
   doc.text(`Tanggal: ${formatIdDateTime(new Date())}`, leftSignatureX, signatureLineY + 8);
-  doc.text("Jabatan / Unit: .............................", rightSignatureX, signatureLineY + 8);
 
   addFooter(doc, meta, pageW, pageH);
 

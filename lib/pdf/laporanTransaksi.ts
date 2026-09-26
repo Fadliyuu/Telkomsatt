@@ -35,6 +35,8 @@ export interface LaporanTransaksiPdfMeta {
   exportedByName?: string;
   exportedByRole?: string;
   exportedByEmail?: string;
+  recipientName?: string;
+  recipientPosition?: string;
 }
 
 function jenisLabel(j: string): string {
@@ -419,6 +421,8 @@ export async function downloadLaporanTransaksiPdf(params: {
   const rightSignatureX = pageW - margin - signatureWidth - 8;
   const exporterName = meta?.exportedByName || "Administrator";
   const exporterRole = meta?.exportedByRole || "Admin Sistem / Gudang";
+  const recipientName = meta?.recipientName || "....................................................";
+  const recipientPosition = meta?.recipientPosition || "";
   const signatureLineY = signatureY + 20;
 
   doc.setFont("helvetica", "normal");
@@ -429,21 +433,19 @@ export async function downloadLaporanTransaksiPdf(params: {
   doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
   doc.text(exporterRole, leftSignatureX, signatureY + 4);
-  doc.text("Penerima / Atasan Terkait", rightSignatureX, signatureY + 4);
+  doc.text(recipientPosition, rightSignatureX, signatureY + 4);
   doc.setDrawColor(148, 163, 184);
   doc.setLineWidth(0.35);
   doc.line(leftSignatureX, signatureLineY, leftSignatureX + signatureWidth, signatureLineY);
-  doc.line(rightSignatureX, signatureLineY, rightSignatureX + signatureWidth, signatureLineY);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(30, 41, 59);
   doc.text(`( ${exporterName} )`, leftSignatureX, signatureLineY + 4);
-  doc.text("( .................................................... )", rightSignatureX, signatureLineY + 4);
+  doc.text(`( ${recipientName} )`, rightSignatureX, signatureLineY + 4);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
   doc.text(`Tanggal: ${new Intl.DateTimeFormat("id-ID", { dateStyle: "medium" }).format(new Date())}`, leftSignatureX, signatureLineY + 8.5);
-  doc.text("Jabatan / Unit: .............................", rightSignatureX, signatureLineY + 8.5);
 
   addFooter(doc);
 

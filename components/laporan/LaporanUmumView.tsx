@@ -20,6 +20,8 @@ import {
 import Link from "next/link";
 import { matchesReportSearch } from "@/lib/utils/reportSearch";
 import { useAuthStore } from "@/lib/store/useAuthStore";
+import PdfRecipientModal from "@/components/laporan/PdfRecipientModal";
+import type { PdfRecipient } from "@/components/laporan/PdfRecipientModal";
 
 /** Ikon unduh lokal — hindari impor `FileDown` dari lucide (sering gagal dibaca jika node_modules di OneDrive). */
 function IconDownload({ className }: { className?: string }) {
@@ -62,6 +64,7 @@ export default function LaporanUmumView() {
   });
   const [sparepartNames, setSparepartNames] = useState<Record<string, string>>({});
   const [searchQuery, setSearchQuery] = useState("");
+  const [recipientModalOpen, setRecipientModalOpen] = useState(false);
   /** Semua transaksi dalam rentang tanggal (tanpa filter jenis/teknisi) — untuk opsi dropdown teknisi */
   const [transactionsInPeriod, setTransactionsInPeriod] = useState<Transaksi[]>([]);
 
@@ -179,7 +182,7 @@ export default function LaporanUmumView() {
 
   const stats = getStats();
 
-  const handleExportPdf = async () => {
+  const handleExportPdf = () => {
     if (loading || error || loadedFilters !== filters) {
       toast.error("Tunggu hingga data selesai dimuat");
       return;
@@ -188,6 +191,11 @@ export default function LaporanUmumView() {
       toast.error("Tidak ada data untuk diekspor. Ubah filter atau periode.");
       return;
     }
+    setRecipientModalOpen(true);
+  };
+
+  const handleConfirmExport = async (recipient: PdfRecipient) => {
+    setRecipientModalOpen(false);
     await toast.promise(
       downloadLaporanTransaksiPdf({
         transactions: filteredTransactions,
@@ -199,6 +207,8 @@ export default function LaporanUmumView() {
               exportedByName: user.nama,
               exportedByRole: USER_ROLE_LABELS[user.role],
               exportedByEmail: user.email,
+              recipientName: recipient.name,
+              recipientPosition: recipient.position,
             }
           : undefined,
       }),
@@ -206,7 +216,7 @@ export default function LaporanUmumView() {
         loading: "Menyiapkan PDF…",
         success: "PDF berhasil diunduh",
         error: "Gagal membuat PDF. Coba lagi.",
-      }
+        }
     );
   };
 
@@ -516,6 +526,7 @@ export default function LaporanUmumView() {
             )}
           </div>
         </div>
+      <PdfRecipientModal open={recipientModalOpen} onClose={() => setRecipientModalOpen(false)} onConfirm={handleConfirmExport} />
     </div>
   );
 }
