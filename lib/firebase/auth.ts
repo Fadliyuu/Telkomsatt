@@ -12,11 +12,14 @@ import { auth, db } from "./config";
 import { COLLECTIONS } from "./collections";
 import { User } from "@/types";
 
-async function resolveUsername(username: string): Promise<string> {
+async function resolveLoginEmail(identifier: string): Promise<string> {
+  const value = identifier.trim().toLowerCase();
+  if (value.includes("@")) return value;
+
   const response = await fetch("/api/auth/resolve-username", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ username: username.trim().toLowerCase() }),
+    body: JSON.stringify({ username: value }),
   });
   const payload = (await response.json().catch(() => null)) as {
     success?: boolean;
@@ -75,11 +78,11 @@ function getPasswordResetActionSettings(): ActionCodeSettings | undefined {
 }
 
 export const login = async (
-  username: string,
+  identifier: string,
   password: string,
 ): Promise<User> => {
   try {
-    const email = await resolveUsername(username);
+    const email = await resolveLoginEmail(identifier);
     const userCredential = await signInWithEmailAndPassword(
       auth,
       email,

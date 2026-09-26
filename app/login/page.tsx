@@ -251,7 +251,7 @@ function LoginContent() {
                   htmlFor={resetMode ? "reset-email" : "username"}
                   className="block text-xs font-bold uppercase tracking-wider text-gray-300"
                 >
-                  {resetMode ? "Email Terdaftar" : "Username (Nama Depan)"}
+                  {resetMode ? "Email Terdaftar" : "Email atau Username"}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
@@ -274,7 +274,9 @@ function LoginContent() {
                     required
                     className="w-full pl-11 pr-4 py-3 bg-white/10 border border-white/15 rounded-xl focus:border-telkomsat-red focus:bg-white/15 outline-none transition-all text-sm text-white placeholder:text-gray-400 font-medium"
                     placeholder={
-                      resetMode ? "email@contoh.com" : "Contoh: abdillah"
+                      resetMode
+                        ? "Masukkan email terdaftar"
+                        : "Masukkan email atau username"
                     }
                   />
                 </div>
